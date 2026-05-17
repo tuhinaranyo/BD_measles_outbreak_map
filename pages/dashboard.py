@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 from html import escape
+import json
 import sqlite3
 
 import pandas as pd
 import plotly.express as px
 import streamlit as st
+import streamlit.components.v1 as components
 
-from measles_dashboard.config import DB_PATH
+from measles_dashboard.config import DB_PATH, ROOT
 from measles_dashboard.db import init_db
 from measles_dashboard.ui import inject_style
 
@@ -22,56 +24,22 @@ RISK_STYLE = {
     "Lower signal": {"color": "#006a4e", "soft": "#edf7f0", "rank": 1},
 }
 
-DIVISION_SHAPES = {
-    "\u09b0\u0982\u09aa\u09c1\u09b0": {
-        "name": "Rangpur",
-        "points": "118,34 198,42 218,116 174,153 96,129 78,68",
-        "label": (142, 88),
-    },
-    "\u09b0\u09be\u099c\u09b6\u09be\u09b9\u09c0": {
-        "name": "Rajshahi",
-        "points": "73,132 172,158 187,248 132,292 48,243 38,170",
-        "label": (104, 216),
-    },
-    "\u09ae\u09df\u09ae\u09a8\u09b8\u09bf\u0982\u09b9": {
-        "name": "Mymensingh",
-        "points": "205,121 298,112 331,184 281,230 194,205 179,154",
-        "label": (254, 166),
-    },
-    "\u09b8\u09bf\u09b2\u09c7\u099f": {
-        "name": "Sylhet",
-        "points": "332,116 449,98 492,164 456,224 340,205 306,146",
-        "label": (410, 158),
-    },
-    "\u09a2\u09be\u0995\u09be": {
-        "name": "Dhaka",
-        "points": "185,211 280,236 307,315 246,379 159,333 137,282",
-        "label": (224, 291),
-    },
-    "\u0996\u09c1\u09b2\u09a8\u09be": {
-        "name": "Khulna",
-        "points": "44,252 133,302 154,405 112,503 42,444 25,336",
-        "label": (89, 371),
-    },
-    "\u09ac\u09b0\u09bf\u09b6\u09be\u09b2": {
-        "name": "Barishal",
-        "points": "156,341 244,389 258,502 194,565 126,503 119,414",
-        "label": (190, 456),
-    },
-    "\u099a\u099f\u09cd\u099f\u0997\u09cd\u09b0\u09be\u09ae": {
-        "name": "Chattogram",
-        "points": "293,250 399,242 451,336 431,473 487,612 392,579 331,459 256,396",
-        "label": (382, 406),
-    },
-}
+MAP_PATH = ROOT / "assets" / "bd_divisions_svg.json"
+
+
+@st.cache_data(ttl=3600)
+def load_division_map() -> dict:
+    return json.loads(MAP_PATH.read_text(encoding="utf-8"))
 
 
 def render_warning_map(map_data: pd.DataFrame, latest_date: pd.Timestamp) -> str:
+    division_map = load_division_map()
     rows = {row["division"]: row for _, row in map_data.iterrows()}
     regions = []
     labels = []
     cards = []
-    for division, shape in DIVISION_SHAPES.items():
+    for shape in division_map["divisions"]:
+        division = shape["bn"]
         row = rows.get(division)
         if row is None:
             status = "Lower signal"
@@ -87,9 +55,9 @@ def render_warning_map(map_data: pd.DataFrame, latest_date: pd.Timestamp) -> str
         alert_symbol = "!" if status == "High alert" else "•" if status == "Watch closely" else ""
         regions.append(
             f"""
-            <polygon class="bd-region" points="{shape['points']}" fill="{style['soft']}" stroke="{style['color']}">
+            <path class="bd-region" d="{shape['path']}" fill="{style['soft']}" stroke="{style['color']}">
                 <title>{escape(shape['name'])}: {escape(status)}, 24h total {total:,}, deaths {deaths:,}</title>
-            </polygon>
+            </path>
             """
         )
         labels.append(
@@ -113,6 +81,166 @@ def render_warning_map(map_data: pd.DataFrame, latest_date: pd.Timestamp) -> str
         )
 
     return f"""
+    <style>
+        :root {{
+            --ink: #14231d;
+            --muted: #65736c;
+            --line: #dfe8df;
+            --green: #006a4e;
+            --red: #d71920;
+            --gold: #c5922d;
+        }}
+        body {{
+            margin: 0;
+            font-family: "Source Sans Pro", Arial, sans-serif;
+            color: var(--ink);
+            background: transparent;
+        }}
+        .bd-map-panel {{
+            box-sizing: border-box;
+            display: grid;
+            grid-template-columns: minmax(0, .86fr) minmax(320px, 1.1fr);
+            gap: 18px;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
+            border: 1px solid rgba(0, 106, 78, .18);
+            border-radius: 18px;
+            background:
+                linear-gradient(135deg, rgba(255,255,255,.96), rgba(237,247,240,.92)),
+                linear-gradient(90deg, rgba(0,106,78,.06) 1px, transparent 1px);
+            box-shadow: 0 18px 44px rgba(0, 67, 50, .09);
+        }}
+        .public-kicker {{
+            display: inline-flex;
+            color: var(--red);
+            font-size: .78rem;
+            font-weight: 850;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            margin-bottom: 8px;
+        }}
+        .bd-map-copy h2 {{
+            margin: 4px 0 8px;
+            font-size: 1.65rem;
+            line-height: 1.12;
+        }}
+        .bd-map-copy p {{
+            color: var(--muted);
+            line-height: 1.55;
+            margin: 0 0 12px;
+            font-size: .96rem;
+        }}
+        .bd-map-legend, .bd-map-cards {{
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }}
+        .bd-map-source {{
+            display: block;
+            margin-top: 10px;
+            color: #718178;
+            font-size: .72rem;
+            line-height: 1.35;
+        }}
+        .bd-map-legend span, .bd-map-card {{
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            min-height: 30px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(0, 67, 50, .12);
+            background: rgba(255, 255, 255, .88);
+            color: var(--ink);
+            font-size: .78rem;
+            font-weight: 800;
+        }}
+        .bd-map-legend i, .bd-map-card span {{
+            width: 10px;
+            height: 10px;
+            border-radius: 999px;
+            display: inline-block;
+        }}
+        .bd-map-legend .high {{ background: var(--red); }}
+        .bd-map-legend .watch {{ background: var(--gold); }}
+        .bd-map-legend .lower {{ background: var(--green); }}
+        .bd-map-wrap {{
+            justify-self: center;
+            width: min(100%, 470px);
+            padding: 10px;
+            border-radius: 22px;
+            background: linear-gradient(180deg, #ffffff, #f2faf4);
+            border: 1px solid rgba(0, 106, 78, .12);
+        }}
+        .bd-map-svg {{
+            width: 100%;
+            height: auto;
+            display: block;
+            overflow: visible;
+        }}
+        .bd-region {{
+            stroke-width: 3.2;
+            stroke-linejoin: round;
+            filter: drop-shadow(0 6px 10px rgba(0, 67, 50, .10));
+        }}
+        .bd-label text {{
+            text-anchor: middle;
+            pointer-events: none;
+        }}
+        .bd-alert-symbol {{
+            fill: #ffffff;
+            font-size: 17px;
+            font-weight: 900;
+        }}
+        .bd-name {{
+            fill: #16372d;
+            font-size: 18px;
+            font-weight: 900;
+        }}
+        .bd-count {{
+            fill: #5f2f31;
+            font-size: 19px;
+            font-weight: 900;
+        }}
+        .bd-map-cards {{
+            grid-column: 1 / -1;
+        }}
+        .bd-map-card b {{
+            font-size: .8rem;
+        }}
+        .bd-map-card small {{
+            color: var(--muted);
+            font-size: .74rem;
+            font-weight: 750;
+        }}
+        @media (max-width: 760px) {{
+            .bd-map-panel {{
+                grid-template-columns: 1fr;
+                padding: 14px;
+                gap: 12px;
+                border-radius: 16px;
+            }}
+            .bd-map-copy h2 {{
+                font-size: 1.35rem;
+            }}
+            .bd-map-wrap {{
+                width: min(100%, 360px);
+                padding: 6px;
+            }}
+            .bd-name {{
+                font-size: 16px;
+            }}
+            .bd-count {{
+                font-size: 17px;
+            }}
+            .bd-map-cards {{
+                max-height: 132px;
+                overflow: auto;
+                padding-bottom: 2px;
+            }}
+        }}
+    </style>
     <section class="bd-map-panel">
         <div class="bd-map-copy">
             <div class="public-kicker">Division warning map</div>
@@ -123,10 +251,11 @@ def render_warning_map(map_data: pd.DataFrame, latest_date: pd.Timestamp) -> str
                 <span><i class="watch"></i> Watch closely</span>
                 <span><i class="lower"></i> Lower signal</span>
             </div>
+            <small class="bd-map-source">Boundary source: Bangladesh GeoJSON / geoBoundaries.</small>
         </div>
         <div class="bd-map-wrap" aria-label="Bangladesh division warning map for {latest_date.date()}">
-            <svg class="bd-map-svg" viewBox="0 0 520 640" role="img">
-                <rect x="0" y="0" width="520" height="640" rx="28" fill="#f7fbf7"></rect>
+            <svg class="bd-map-svg" viewBox="{division_map['viewBox']}" role="img">
+                <rect x="0" y="0" width="{division_map['width']}" height="{division_map['height']}" rx="28" fill="#f7fbf7"></rect>
                 <g>{''.join(regions)}</g>
                 <g>{''.join(labels)}</g>
             </svg>
@@ -273,9 +402,10 @@ def map_status(row: pd.Series) -> str:
 
 
 map_data["status"] = map_data.apply(map_status, axis=1)
-map_data["division_label"] = map_data["division"].map(lambda value: DIVISION_SHAPES.get(value, {}).get("name", value))
+division_names = {item["bn"]: item["name"] for item in load_division_map()["divisions"]}
+map_data["division_label"] = map_data["division"].map(lambda value: division_names.get(value, value))
 
-st.markdown(render_warning_map(map_data, latest_date), unsafe_allow_html=True)
+components.html(render_warning_map(map_data, latest_date), height=840, scrolling=False)
 
 st.subheader("Where is increasing now?")
 ranking = (
