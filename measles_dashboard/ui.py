@@ -8,35 +8,38 @@ def inject_style() -> None:
         """
         <style>
         :root {
-            --ink: #171412;
-            --muted: #6e665f;
-            --line: #e9e1d6;
-            --paper: #fffdf8;
+            --ink: #14231d;
+            --muted: #65736c;
+            --line: #dfe8df;
+            --paper: #fbfcf8;
             --panel: #ffffff;
-            --green: #1aa179;
-            --coral: #f26d4f;
-            --yellow: #f5bd3d;
-            --blue: #4d73ff;
-            --violet: #9b7cff;
+            --green: #006a4e;
+            --deep-green: #004332;
+            --red: #d71920;
+            --soft-red: #fff0ef;
+            --gold: #c5922d;
+            --blue: #2f6f8f;
+            --sage: #eaf4ed;
         }
 
         [data-testid="stAppViewContainer"] {
             background:
-                linear-gradient(90deg, rgba(242, 109, 79, .08) 1px, transparent 1px),
-                linear-gradient(rgba(77, 115, 255, .06) 1px, transparent 1px),
+                linear-gradient(180deg, rgba(0, 106, 78, .055), transparent 360px),
+                linear-gradient(90deg, rgba(0, 106, 78, .045) 1px, transparent 1px),
+                linear-gradient(rgba(215, 25, 32, .035) 1px, transparent 1px),
                 var(--paper);
             background-size: 44px 44px;
             color: var(--ink);
         }
 
         [data-testid="stHeader"] {
-            background: rgba(255, 253, 248, .78);
+            background: rgba(251, 252, 248, .86);
             backdrop-filter: blur(12px);
-            border-bottom: 1px solid rgba(233, 225, 214, .75);
+            border-bottom: 1px solid rgba(223, 232, 223, .9);
         }
 
         [data-testid="stSidebar"] {
-            background: #fff9ef;
+            background: #f6faf6;
             border-right: 1px solid var(--line);
         }
 
@@ -88,36 +91,42 @@ def inject_style() -> None:
 
         .public-header {
             position: relative;
-            min-height: 230px;
+            min-height: 250px;
             display: flex;
             align-items: flex-end;
             padding: 34px 34px 30px;
             margin-bottom: 18px;
-            border-radius: 22px;
+            border-radius: 18px;
             border: 1px solid var(--line);
             background:
-                radial-gradient(circle at 88% 18%, rgba(245, 189, 61, .34), transparent 22%),
-                radial-gradient(circle at 8% 12%, rgba(26, 161, 121, .22), transparent 26%),
-                linear-gradient(135deg, #fff 0%, #fff8ec 44%, #eef8f5 100%);
-            box-shadow: 0 22px 60px rgba(51, 39, 24, .10);
+                linear-gradient(90deg, rgba(0, 106, 78, .08) 1px, transparent 1px),
+                linear-gradient(rgba(0, 106, 78, .06) 1px, transparent 1px),
+                linear-gradient(135deg, #ffffff 0%, #f5fbf6 52%, #fff3f2 100%);
+            background-size: 36px 36px, 36px 36px, auto;
+            box-shadow: 0 22px 56px rgba(0, 67, 50, .10);
             overflow: hidden;
+        }
+
+        .public-header:before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 9px;
+            background: linear-gradient(180deg, var(--green), var(--red));
         }
 
         .public-header:after {
             content: "";
             position: absolute;
-            right: 34px;
-            top: 34px;
-            width: 210px;
-            height: 150px;
-            border: 2px solid rgba(23, 20, 18, .12);
-            border-radius: 28px;
-            transform: rotate(-7deg);
-            background:
-                linear-gradient(90deg, transparent 28px, rgba(23, 20, 18, .08) 29px, transparent 30px),
-                linear-gradient(rgba(23, 20, 18, .08) 1px, transparent 1px);
-            background-size: 42px 100%, 100% 34px;
-            opacity: .8;
+            right: -80px;
+            top: -90px;
+            width: 260px;
+            height: 260px;
+            border-radius: 50%;
+            border: 38px solid rgba(215, 25, 32, .09);
+            opacity: 1;
         }
 
         .public-header > div {
@@ -128,7 +137,7 @@ def inject_style() -> None:
 
         .public-kicker {
             display: inline-flex;
-            color: var(--green);
+            color: var(--red);
             font-size: .82rem;
             font-weight: 850;
             text-transform: uppercase;
@@ -138,7 +147,7 @@ def inject_style() -> None:
 
         .public-header h1 {
             max-width: 780px;
-            font-size: 3rem !important;
+            font-size: 2.85rem !important;
             line-height: 1.02 !important;
             margin: 0 0 12px !important;
             font-weight: 900 !important;
@@ -150,6 +159,44 @@ def inject_style() -> None:
             font-size: 1.08rem;
             line-height: 1.55;
             margin: 0;
+        }
+
+        .care-note {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 12px;
+            align-items: start;
+            margin: 8px 0 18px;
+            padding: 14px 16px;
+            border: 1px solid rgba(215, 25, 32, .18);
+            border-left: 5px solid var(--red);
+            border-radius: 14px;
+            background: linear-gradient(135deg, #ffffff, var(--soft-red));
+            box-shadow: 0 12px 28px rgba(0, 67, 50, .06);
+        }
+
+        .care-note b {
+            display: block;
+            color: var(--deep-green);
+            font-size: .94rem;
+            margin-bottom: 3px;
+        }
+
+        .care-note span {
+            color: #5f2f31;
+            line-height: 1.5;
+            font-size: .92rem;
+        }
+
+        .care-mark {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            background: var(--red);
+            color: #fff;
+            font-weight: 900;
         }
 
         .eyebrow {
@@ -245,26 +292,26 @@ def inject_style() -> None:
         .stTabs [data-baseweb="tab"] {
             border: 1px solid var(--line);
             border-radius: 999px;
-            background: #fffaf0;
+            background: #f7fbf7;
             color: var(--muted);
             padding: 8px 16px;
         }
 
         .stTabs [aria-selected="true"] {
-            background: var(--ink) !important;
+            background: var(--deep-green) !important;
             color: #fff !important;
-            border-color: var(--ink) !important;
+            border-color: var(--deep-green) !important;
         }
 
         div.stButton > button,
         div[data-testid="stDownloadButton"] > button,
         a[data-testid="stLinkButton"] {
             border-radius: 999px !important;
-            border: 1px solid var(--ink) !important;
-            background: var(--ink) !important;
+            border: 1px solid var(--deep-green) !important;
+            background: var(--deep-green) !important;
             color: #fff !important;
             font-weight: 800 !important;
-            box-shadow: 0 8px 20px rgba(23, 20, 18, .12);
+            box-shadow: 0 8px 20px rgba(0, 67, 50, .14);
         }
 
         [data-testid="stMarkdownContainer"] a {
@@ -327,7 +374,7 @@ def inject_style() -> None:
             gap: 8px;
             justify-content: flex-end;
             margin: -4px 2px 18px;
-            color: #718078;
+            color: #6c7d73;
             font-size: .78rem;
             font-weight: 700;
         }
@@ -338,12 +385,12 @@ def inject_style() -> None:
             gap: 4px;
             padding: 5px 9px;
             border-radius: 999px;
-            background: rgba(238, 248, 245, .86);
-            border: 1px solid rgba(26, 161, 121, .16);
+            background: rgba(234, 244, 237, .92);
+            border: 1px solid rgba(0, 106, 78, .15);
         }
 
         .update-strip b {
-            color: #2d6d61;
+            color: var(--green);
             font-weight: 850;
         }
 
@@ -356,11 +403,11 @@ def inject_style() -> None:
 
         .metric-tile {
             min-height: 112px;
-            border-radius: 18px;
+            border-radius: 14px;
             padding: 16px;
             border: 1px solid var(--line);
             background: #fff;
-            box-shadow: 0 14px 34px rgba(51, 39, 24, .08);
+            box-shadow: 0 14px 34px rgba(0, 67, 50, .07);
             display: flex;
             flex-direction: column;
             justify-content: space-between;
@@ -379,10 +426,10 @@ def inject_style() -> None:
             font-weight: 900;
         }
 
-        .metric-tile.green { background: linear-gradient(135deg, #ffffff, rgba(26, 161, 121, .14)); }
-        .metric-tile.blue { background: linear-gradient(135deg, #ffffff, rgba(77, 115, 255, .13)); }
-        .metric-tile.coral { background: linear-gradient(135deg, #ffffff, rgba(242, 109, 79, .14)); }
-        .metric-tile.violet { background: linear-gradient(135deg, #ffffff, rgba(155, 124, 255, .14)); }
+        .metric-tile.green { background: linear-gradient(135deg, #ffffff, rgba(0, 106, 78, .13)); border-top: 4px solid var(--green); }
+        .metric-tile.blue { background: linear-gradient(135deg, #ffffff, rgba(47, 111, 143, .12)); border-top: 4px solid var(--blue); }
+        .metric-tile.coral { background: linear-gradient(135deg, #ffffff, rgba(215, 25, 32, .13)); border-top: 4px solid var(--red); }
+        .metric-tile.violet { background: linear-gradient(135deg, #ffffff, rgba(197, 146, 45, .13)); border-top: 4px solid var(--gold); }
 
         @media (max-width: 760px) {
             .hero-title { font-size: 2rem; }

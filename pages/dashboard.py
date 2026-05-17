@@ -32,11 +32,18 @@ st.markdown(
     """
     <section class="public-header">
         <div>
-            <div class="public-kicker">Bangladesh measles surveillance</div>
-            <h1>Where measles reports are rising now</h1>
-            <p>Division-wise daily trends for suspected cases, confirmed cases, admissions, recoveries, and deaths.</p>
+            <div class="public-kicker">Bangladesh measles alert</div>
+            <h1>Protect children by seeing where measles is rising</h1>
+            <p>Daily DGHS reports made easier to understand, so families, communities, and caregivers can notice risk early and act with care.</p>
         </div>
     </section>
+    <div class="care-note">
+        <div class="care-mark">!</div>
+        <div>
+            <b>Every number here represents families who need protection and support.</b>
+            <span>Use the latest 24-hour signals to stay aware, check vaccination status, and seek medical advice quickly if a child has fever with rash or measles-like symptoms.</span>
+        </div>
+    </div>
     """,
     unsafe_allow_html=True,
 )
@@ -75,16 +82,7 @@ if stats.empty:
     st.stop()
 
 default_start_date = max(all_min_date, all_max_date - pd.Timedelta(days=14))
-selected_range = st.sidebar.date_input(
-    "Date range",
-    value=(default_start_date, all_max_date),
-    min_value=all_min_date,
-    max_value=all_max_date,
-)
-if isinstance(selected_range, tuple) and len(selected_range) == 2:
-    start_date, end_date = selected_range
-else:
-    start_date, end_date = default_start_date, all_max_date
+start_date, end_date = default_start_date, all_max_date
 
 divisions = sorted(stats["division"].dropna().unique())
 
@@ -108,9 +106,9 @@ total_confirmed = int(latest["confirmed_total"].fillna(0).sum())
 st.markdown(
     f"""
     <div class="metric-grid">
-        <div class="metric-tile green"><b>New suspected</b><span>{today_suspected:,}</span></div>
-        <div class="metric-tile blue"><b>New confirmed</b><span>{today_confirmed:,}</span></div>
-        <div class="metric-tile coral"><b>New deaths</b><span>{today_deaths:,}</span></div>
+        <div class="metric-tile green"><b>24h suspected</b><span>{today_suspected:,}</span></div>
+        <div class="metric-tile blue"><b>24h confirmed</b><span>{today_confirmed:,}</span></div>
+        <div class="metric-tile coral"><b>24h deaths</b><span>{today_deaths:,}</span></div>
         <div class="metric-tile violet"><b>Cumulative confirmed</b><span>{total_confirmed:,}</span></div>
     </div>
     """,
@@ -134,16 +132,16 @@ ranking = (
     .rename(
         columns={
             "division": "Division",
-            "new_total_24h": "New total",
-            "suspected_24h": "New suspected",
-            "confirmed_24h": "New confirmed",
-            "new_deaths_24h": "New deaths",
-            "admitted_24h": "Admitted",
-            "discharged_24h": "Discharged",
-            "net_admitted_24h": "Net admitted",
+            "new_total_24h": "24h suspected + confirmed",
+            "suspected_24h": "24h suspected",
+            "confirmed_24h": "24h confirmed",
+            "new_deaths_24h": "24h deaths",
+            "admitted_24h": "24h admitted",
+            "discharged_24h": "24h discharged",
+            "net_admitted_24h": "24h net admitted",
         }
     )
-    .sort_values(["New total", "New confirmed"], ascending=False)
+    .sort_values(["24h suspected + confirmed", "24h confirmed"], ascending=False)
 )
 st.dataframe(ranking, use_container_width=True, hide_index=True)
 
@@ -177,14 +175,14 @@ if not previous_window.empty:
         yesterday_deaths = row.get("new_deaths_24h_yesterday")
         status = "Increasing" if cases_today > cases_avg else "Stable or lower"
 
-        death_sentence = "No new deaths reported"
+        death_sentence = "No deaths reported in the last 24 hours"
         if deaths_today:
             death_sentence = f"Deaths are **{deaths_today:,}**, {pct_change(deaths_today, deaths_avg)} than the 7-day average"
             if not pd.isna(yesterday_deaths):
                 death_sentence += f" and {pct_change(deaths_today, yesterday_deaths)} than yesterday"
 
         st.write(
-            f"**{row['division']}** — {status}: new suspected + confirmed reports are **{cases_today:,}**, "
+            f"**{row['division']}** — {status}: last-24-hours suspected + confirmed reports are **{cases_today:,}**, "
             f"{pct_change(cases_today, cases_avg)} than the 7-day average"
             f"{'' if pd.isna(yesterday_cases) else f' and {pct_change(cases_today, yesterday_cases)} than yesterday'}. "
             f"{death_sentence}."
