@@ -207,6 +207,129 @@ def inject_style() -> None:
             line-height: 1.5;
         }
 
+        .bd-map-panel {
+            display: grid;
+            grid-template-columns: minmax(0, .86fr) minmax(320px, 1.1fr);
+            gap: 18px;
+            align-items: center;
+            margin: 6px 0 26px;
+            padding: 20px;
+            border: 1px solid rgba(0, 106, 78, .18);
+            border-radius: 18px;
+            background:
+                linear-gradient(135deg, rgba(255,255,255,.96), rgba(237,247,240,.92)),
+                linear-gradient(90deg, rgba(0,106,78,.06) 1px, transparent 1px);
+            box-shadow: 0 18px 44px rgba(0, 67, 50, .09);
+        }
+
+        .bd-map-copy h2 {
+            margin: 4px 0 8px !important;
+            font-size: 1.65rem !important;
+            line-height: 1.12 !important;
+        }
+
+        .bd-map-copy p {
+            color: var(--muted);
+            line-height: 1.55;
+            margin: 0 0 12px;
+            font-size: .96rem;
+        }
+
+        .bd-map-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .bd-map-legend span,
+        .bd-map-card {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            min-height: 30px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(0, 67, 50, .12);
+            background: rgba(255, 255, 255, .82);
+            color: var(--ink);
+            font-size: .78rem;
+            font-weight: 800;
+        }
+
+        .bd-map-legend i,
+        .bd-map-card span {
+            width: 10px;
+            height: 10px;
+            border-radius: 999px;
+            display: inline-block;
+        }
+
+        .bd-map-legend .high { background: var(--red); }
+        .bd-map-legend .watch { background: var(--gold); }
+        .bd-map-legend .lower { background: var(--green); }
+
+        .bd-map-wrap {
+            justify-self: center;
+            width: min(100%, 470px);
+            padding: 10px;
+            border-radius: 22px;
+            background: linear-gradient(180deg, #ffffff, #f2faf4);
+            border: 1px solid rgba(0, 106, 78, .12);
+        }
+
+        .bd-map-svg {
+            width: 100%;
+            height: auto;
+            display: block;
+            overflow: visible;
+        }
+
+        .bd-region {
+            stroke-width: 3.2;
+            stroke-linejoin: round;
+            filter: drop-shadow(0 6px 10px rgba(0, 67, 50, .10));
+        }
+
+        .bd-label text {
+            text-anchor: middle;
+            pointer-events: none;
+        }
+
+        .bd-alert-symbol {
+            fill: #ffffff;
+            font-size: 17px;
+            font-weight: 900;
+        }
+
+        .bd-name {
+            fill: #16372d;
+            font-size: 18px;
+            font-weight: 900;
+        }
+
+        .bd-count {
+            fill: #5f2f31;
+            font-size: 19px;
+            font-weight: 900;
+        }
+
+        .bd-map-cards {
+            grid-column: 1 / -1;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .bd-map-card b {
+            font-size: .8rem;
+        }
+
+        .bd-map-card small {
+            color: var(--muted);
+            font-size: .74rem;
+            font-weight: 750;
+        }
+
         .eyebrow {
             display: inline-flex;
             align-items: center;
@@ -284,15 +407,6 @@ def inject_style() -> None:
             border-radius: 14px;
             overflow: hidden;
             box-shadow: 0 12px 32px rgba(51, 39, 24, .06);
-        }
-
-        div[data-testid="stPlotlyChart"] {
-            border: 1px solid var(--line);
-            border-radius: 16px;
-            background: rgba(255, 255, 255, .9);
-            box-shadow: 0 16px 38px rgba(0, 67, 50, .08);
-            overflow: hidden;
-            padding: 8px;
         }
 
         [data-testid="stAlert"] {
@@ -477,6 +591,30 @@ def inject_style() -> None:
             }
             .metric-tile b {
                 font-size: .8rem;
+            }
+            .bd-map-panel {
+                grid-template-columns: 1fr;
+                padding: 14px;
+                gap: 12px;
+                border-radius: 16px;
+            }
+            .bd-map-copy h2 {
+                font-size: 1.35rem !important;
+            }
+            .bd-map-wrap {
+                width: min(100%, 360px);
+                padding: 6px;
+            }
+            .bd-name {
+                font-size: 16px;
+            }
+            .bd-count {
+                font-size: 17px;
+            }
+            .bd-map-cards {
+                max-height: 132px;
+                overflow: auto;
+                padding-bottom: 2px;
             }
         }
         </style>

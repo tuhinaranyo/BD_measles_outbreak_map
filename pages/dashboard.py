@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+from html import escape
 import sqlite3
 
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
 import streamlit as st
 
 from measles_dashboard.config import DB_PATH
@@ -16,22 +16,124 @@ st.set_page_config(page_title="DGHS Measles Dashboard", layout="wide")
 inject_style()
 
 
-DIVISION_POINTS = {
-    "\u09a2\u09be\u0995\u09be": {"name": "Dhaka", "lat": 23.8103, "lon": 90.4125},
-    "\u09b0\u09be\u099c\u09b6\u09be\u09b9\u09c0": {"name": "Rajshahi", "lat": 24.3745, "lon": 88.6042},
-    "\u099a\u099f\u09cd\u099f\u0997\u09cd\u09b0\u09be\u09ae": {"name": "Chattogram", "lat": 22.3569, "lon": 91.7832},
-    "\u09ac\u09b0\u09bf\u09b6\u09be\u09b2": {"name": "Barishal", "lat": 22.7010, "lon": 90.3535},
-    "\u09b8\u09bf\u09b2\u09c7\u099f": {"name": "Sylhet", "lat": 24.8949, "lon": 91.8687},
-    "\u09ae\u09df\u09ae\u09a8\u09b8\u09bf\u0982\u09b9": {"name": "Mymensingh", "lat": 24.7471, "lon": 90.4203},
-    "\u0996\u09c1\u09b2\u09a8\u09be": {"name": "Khulna", "lat": 22.8456, "lon": 89.5403},
-    "\u09b0\u0982\u09aa\u09c1\u09b0": {"name": "Rangpur", "lat": 25.7439, "lon": 89.2752},
+RISK_STYLE = {
+    "High alert": {"color": "#d71920", "soft": "#fff0ef", "rank": 3},
+    "Watch closely": {"color": "#c5922d", "soft": "#fff8e6", "rank": 2},
+    "Lower signal": {"color": "#006a4e", "soft": "#edf7f0", "rank": 1},
 }
 
-RISK_STYLE = {
-    "High alert": {"color": "#d71920", "rank": 3},
-    "Watch closely": {"color": "#c5922d", "rank": 2},
-    "Lower signal": {"color": "#006a4e", "rank": 1},
+DIVISION_SHAPES = {
+    "\u09b0\u0982\u09aa\u09c1\u09b0": {
+        "name": "Rangpur",
+        "points": "118,34 198,42 218,116 174,153 96,129 78,68",
+        "label": (142, 88),
+    },
+    "\u09b0\u09be\u099c\u09b6\u09be\u09b9\u09c0": {
+        "name": "Rajshahi",
+        "points": "73,132 172,158 187,248 132,292 48,243 38,170",
+        "label": (104, 216),
+    },
+    "\u09ae\u09df\u09ae\u09a8\u09b8\u09bf\u0982\u09b9": {
+        "name": "Mymensingh",
+        "points": "205,121 298,112 331,184 281,230 194,205 179,154",
+        "label": (254, 166),
+    },
+    "\u09b8\u09bf\u09b2\u09c7\u099f": {
+        "name": "Sylhet",
+        "points": "332,116 449,98 492,164 456,224 340,205 306,146",
+        "label": (410, 158),
+    },
+    "\u09a2\u09be\u0995\u09be": {
+        "name": "Dhaka",
+        "points": "185,211 280,236 307,315 246,379 159,333 137,282",
+        "label": (224, 291),
+    },
+    "\u0996\u09c1\u09b2\u09a8\u09be": {
+        "name": "Khulna",
+        "points": "44,252 133,302 154,405 112,503 42,444 25,336",
+        "label": (89, 371),
+    },
+    "\u09ac\u09b0\u09bf\u09b6\u09be\u09b2": {
+        "name": "Barishal",
+        "points": "156,341 244,389 258,502 194,565 126,503 119,414",
+        "label": (190, 456),
+    },
+    "\u099a\u099f\u09cd\u099f\u0997\u09cd\u09b0\u09be\u09ae": {
+        "name": "Chattogram",
+        "points": "293,250 399,242 451,336 431,473 487,612 392,579 331,459 256,396",
+        "label": (382, 406),
+    },
 }
+
+
+def render_warning_map(map_data: pd.DataFrame, latest_date: pd.Timestamp) -> str:
+    rows = {row["division"]: row for _, row in map_data.iterrows()}
+    regions = []
+    labels = []
+    cards = []
+    for division, shape in DIVISION_SHAPES.items():
+        row = rows.get(division)
+        if row is None:
+            status = "Lower signal"
+            total = deaths = suspected = confirmed = 0
+        else:
+            status = str(row["status"])
+            total = int(row["total_24h"])
+            deaths = int(row["deaths_24h"])
+            suspected = int(row["suspected_24h"] or 0)
+            confirmed = int(row["confirmed_24h"] or 0)
+        style = RISK_STYLE[status]
+        label_x, label_y = shape["label"]
+        alert_symbol = "!" if status == "High alert" else "•" if status == "Watch closely" else ""
+        regions.append(
+            f"""
+            <polygon class="bd-region" points="{shape['points']}" fill="{style['soft']}" stroke="{style['color']}">
+                <title>{escape(shape['name'])}: {escape(status)}, 24h total {total:,}, deaths {deaths:,}</title>
+            </polygon>
+            """
+        )
+        labels.append(
+            f"""
+            <g class="bd-label">
+                <circle cx="{label_x}" cy="{label_y - 18}" r="13" fill="{style['color']}"></circle>
+                <text x="{label_x}" y="{label_y - 13}" class="bd-alert-symbol">{alert_symbol}</text>
+                <text x="{label_x}" y="{label_y + 7}" class="bd-name">{escape(shape['name'])}</text>
+                <text x="{label_x}" y="{label_y + 28}" class="bd-count">{total:,}</text>
+            </g>
+            """
+        )
+        cards.append(
+            f"""
+            <div class="bd-map-card">
+                <span style="background:{style['color']}"></span>
+                <b>{escape(shape['name'])}</b>
+                <small>{escape(status)} · 24h {total:,} · deaths {deaths:,}</small>
+            </div>
+            """
+        )
+
+    return f"""
+    <section class="bd-map-panel">
+        <div class="bd-map-copy">
+            <div class="public-kicker">Division warning map</div>
+            <h2>Where families should watch closely today</h2>
+            <p>Static division borders with live alert colors from the latest validated DGHS report. The number on each division is suspected + confirmed reports in the last 24 hours.</p>
+            <div class="bd-map-legend">
+                <span><i class="high"></i> High alert</span>
+                <span><i class="watch"></i> Watch closely</span>
+                <span><i class="lower"></i> Lower signal</span>
+            </div>
+        </div>
+        <div class="bd-map-wrap" aria-label="Bangladesh division warning map for {latest_date.date()}">
+            <svg class="bd-map-svg" viewBox="0 0 520 640" role="img">
+                <rect x="0" y="0" width="520" height="640" rx="28" fill="#f7fbf7"></rect>
+                <g>{''.join(regions)}</g>
+                <g>{''.join(labels)}</g>
+            </svg>
+        </div>
+        <div class="bd-map-cards">{''.join(cards)}</div>
+    </section>
+    """
 
 
 @st.cache_data(ttl=120)
@@ -171,87 +273,9 @@ def map_status(row: pd.Series) -> str:
 
 
 map_data["status"] = map_data.apply(map_status, axis=1)
-map_data["lat"] = map_data["division"].map(lambda value: DIVISION_POINTS.get(value, {}).get("lat"))
-map_data["lon"] = map_data["division"].map(lambda value: DIVISION_POINTS.get(value, {}).get("lon"))
-map_data["division_label"] = map_data["division"].map(lambda value: DIVISION_POINTS.get(value, {}).get("name", value))
-map_data["marker_size"] = 18 + (map_data["total_24h"] / max_total_24h) * 34
-map_data = map_data.dropna(subset=["lat", "lon"])
+map_data["division_label"] = map_data["division"].map(lambda value: DIVISION_SHAPES.get(value, {}).get("name", value))
 
-st.subheader("Bangladesh warning map")
-st.markdown(
-    """
-    <div class="map-note">
-        Red markers mean deaths were reported or the 24-hour suspected + confirmed count is very high. Gold means the division needs close watching. Green means the latest signal is lower, but still worth attention.
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
-map_fig = go.Figure()
-for status_name, style in RISK_STYLE.items():
-    status_rows = map_data[map_data["status"] == status_name]
-    if status_rows.empty:
-        continue
-    map_fig.add_trace(
-        go.Scattergeo(
-            lat=status_rows["lat"],
-            lon=status_rows["lon"],
-            mode="markers+text",
-            name=status_name,
-            text=["!" if status_name != "Lower signal" else "" for _ in range(len(status_rows))],
-            textfont=dict(color="#ffffff", size=16, family="Arial Black"),
-            marker=dict(
-                size=status_rows["marker_size"],
-                color=style["color"],
-                opacity=0.9,
-                line=dict(color="#ffffff", width=2),
-            ),
-            customdata=status_rows[
-                ["division_label", "total_24h", "suspected_24h", "confirmed_24h", "deaths_24h", "avg_total_7d"]
-            ],
-            hovertemplate=(
-                "<b>%{customdata[0]}</b><br>"
-                "Status: " + status_name + "<br>"
-                "24h suspected + confirmed: %{customdata[1]:,}<br>"
-                "24h suspected: %{customdata[2]:,}<br>"
-                "24h confirmed: %{customdata[3]:,}<br>"
-                "24h deaths: %{customdata[4]:,}<br>"
-                "7-day average: %{customdata[5]:.1f}"
-                "<extra></extra>"
-            ),
-        )
-    )
-
-map_fig.update_geos(
-    projection_type="mercator",
-    lonaxis_range=[88.0, 92.8],
-    lataxis_range=[20.5, 26.8],
-    showland=True,
-    landcolor="#eef7ef",
-    showocean=True,
-    oceancolor="#f6fbff",
-    showcountries=True,
-    countrycolor="#7fa28e",
-    showsubunits=True,
-    subunitcolor="#c9d8cd",
-    showlakes=False,
-    bgcolor="rgba(0,0,0,0)",
-)
-map_fig.update_layout(
-    height=560,
-    margin=dict(l=0, r=0, t=4, b=0),
-    legend=dict(
-        orientation="h",
-        yanchor="bottom",
-        y=1.01,
-        xanchor="left",
-        x=0,
-        bgcolor="rgba(255,255,255,.82)",
-    ),
-    paper_bgcolor="rgba(0,0,0,0)",
-    plot_bgcolor="rgba(0,0,0,0)",
-)
-st.plotly_chart(map_fig, use_container_width=True)
+st.markdown(render_warning_map(map_data, latest_date), unsafe_allow_html=True)
 
 st.subheader("Where is increasing now?")
 ranking = (
