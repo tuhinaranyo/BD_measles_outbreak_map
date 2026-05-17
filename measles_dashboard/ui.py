@@ -199,6 +199,14 @@ def inject_style() -> None:
             font-weight: 900;
         }
 
+        .map-note {
+            margin: -4px 0 10px;
+            max-width: 860px;
+            color: #51645a;
+            font-size: .92rem;
+            line-height: 1.5;
+        }
+
         .eyebrow {
             display: inline-flex;
             align-items: center;
@@ -276,6 +284,15 @@ def inject_style() -> None:
             border-radius: 14px;
             overflow: hidden;
             box-shadow: 0 12px 32px rgba(51, 39, 24, .06);
+        }
+
+        div[data-testid="stPlotlyChart"] {
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            background: rgba(255, 255, 255, .9);
+            box-shadow: 0 16px 38px rgba(0, 67, 50, .08);
+            overflow: hidden;
+            padding: 8px;
         }
 
         [data-testid="stAlert"] {
