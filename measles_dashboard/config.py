@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-DATA_DIR = ROOT / "data"
+DATA_DIR = Path(os.getenv("MEASLES_DATA_DIR", ROOT / "data")).expanduser().resolve()
 RAW_PDF_DIR = DATA_DIR / "raw_pdfs"
 TEXT_DIR = DATA_DIR / "extracted_text"
 DB_PATH = DATA_DIR / "measles.db"

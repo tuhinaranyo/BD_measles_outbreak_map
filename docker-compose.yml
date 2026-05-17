@@ -1,0 +1,13 @@
+services:
+  measles-dashboard:
+    build: .
+    ports:
+      - "8501:8501"
+    environment:
+      MEASLES_DATA_DIR: /app/data
+    volumes:
+      - measles-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  measles-data:

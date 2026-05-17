@@ -37,10 +37,25 @@ https://dghs.gov.bd/pages/press-releases/
 
 PDFs are stored in `data/raw_pdfs`, extracted text/debug files in `data/extracted_text`, and the SQLite database in `data/measles.db`.
 
+For hosted servers, set `MEASLES_DATA_DIR` to a persistent storage folder so the database and PDFs are not lost after restart.
+
 ## Run The App
 
 ```powershell
 .\.venv\Scripts\streamlit run app.py
+```
+
+## Run With Docker
+
+```powershell
+docker compose up -d --build
+```
+
+Then open:
+
+```text
+http://localhost:8501
+http://localhost:8501/admin
 ```
 
 ## Admin
@@ -82,3 +97,4 @@ The extractor validates every report against the `মোট` row when possible. 
 
 - [Architecture](docs/ARCHITECTURE.md)
 - [Admin guide](docs/ADMIN_GUIDE.md)
+- [Deployment guide](docs/DEPLOYMENT.md)
