@@ -13,7 +13,7 @@ env/
 # Local generated data
 data/*.db
 data/*.sqlite
-tmp_seed_test/
+tmp_seed_test*/
 data/extracted_text/*
 data/raw_pdfs/*
 !data/seed_data.json

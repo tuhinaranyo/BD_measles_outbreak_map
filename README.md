@@ -18,6 +18,11 @@ Project name: `dghs-measles-dashboard`
 - Public dashboard: `http://localhost:8501/`
 - Admin page: `http://localhost:8501/admin`
 
+Public Streamlit deployment:
+
+- Public dashboard: `https://bdmeaslesoalert.streamlit.app/`
+- Admin page: `https://bdmeaslesoalert.streamlit.app/admin`
+
 ## Setup
 
 ```powershell
@@ -38,6 +43,8 @@ https://dghs.gov.bd/pages/press-releases/
 PDFs are stored in `data/raw_pdfs`, extracted text/debug files in `data/extracted_text`, and the SQLite database in `data/measles.db`.
 
 For hosted servers, set `MEASLES_DATA_DIR` to a persistent storage folder so the database and PDFs are not lost after restart.
+
+On Streamlit Community Cloud, the app automatically loads `data/seed_data.json` if the hosted database starts empty. This keeps the public dashboard populated after a fresh deploy.
 
 ## Run The App
 
@@ -72,6 +79,14 @@ There you can:
 - Preview a saved PDF by date.
 - Manually edit division data for a report date.
 - Mark a corrected report as reviewed so it appears in the dashboard.
+
+For public deployments, protect the admin page by adding this secret in Streamlit Cloud:
+
+```toml
+ADMIN_PASSWORD = "choose-a-strong-password"
+```
+
+Locally, you can set the same value as an environment variable named `ADMIN_PASSWORD`.
 
 ## Daily Update
 

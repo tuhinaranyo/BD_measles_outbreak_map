@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import os
 import sqlite3
 from pathlib import Path
 
@@ -16,6 +17,40 @@ from measles_dashboard.ui import inject_style
 
 st.set_page_config(page_title="DGHS Measles Admin", layout="wide")
 inject_style()
+
+
+def get_admin_password() -> str | None:
+    try:
+        password = st.secrets.get("ADMIN_PASSWORD")
+        if password:
+            return str(password)
+    except Exception:
+        pass
+    return os.getenv("ADMIN_PASSWORD")
+
+
+def require_admin_login() -> None:
+    password = get_admin_password()
+    if not password:
+        st.error("Admin is not configured yet. Add ADMIN_PASSWORD in Streamlit Cloud secrets.")
+        st.stop()
+
+    if st.session_state.get("admin_authenticated"):
+        return
+
+    st.title("Admin")
+    st.caption("Protected workspace for reviewing PDFs and correcting dashboard data.")
+    entered = st.text_input("Admin password", type="password")
+    if st.button("Enter admin", type="primary", use_container_width=True):
+        if entered == password:
+            st.session_state["admin_authenticated"] = True
+            st.rerun()
+        else:
+            st.error("Wrong password.")
+    st.stop()
+
+
+require_admin_login()
 
 
 @st.cache_data(ttl=120)
