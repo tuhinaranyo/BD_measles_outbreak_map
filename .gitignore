@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+
+# Streamlit and local runtime
+.streamlit/secrets.toml
+*.log
+
+# Local generated data
+data/*.db
+data/*.sqlite
+data/extracted_text/*
+data/raw_pdfs/*
+!data/extracted_text/.gitkeep
+!data/raw_pdfs/.gitkeep
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
