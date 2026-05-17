@@ -13,8 +13,10 @@ env/
 # Local generated data
 data/*.db
 data/*.sqlite
+tmp_seed_test/
 data/extracted_text/*
 data/raw_pdfs/*
+!data/seed_data.json
 !data/extracted_text/.gitkeep
 !data/raw_pdfs/.gitkeep
 
@@ -23,4 +25,3 @@ data/raw_pdfs/*
 Thumbs.db
 .vscode/
 .idea/
-

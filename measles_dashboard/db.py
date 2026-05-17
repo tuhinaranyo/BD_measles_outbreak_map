@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import json
 import sqlite3
 from pathlib import Path
 from typing import Iterable
 
-from .config import DB_PATH
+from .config import DB_PATH, ROOT
+
+
+SEED_PATH = ROOT / "data" / "seed_data.json"
 
 
 def connect() -> sqlite3.Connection:
@@ -57,6 +61,54 @@ def init_db() -> None:
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             );
             """
+        )
+    seed_if_empty()
+
+
+def seed_if_empty() -> None:
+    if not SEED_PATH.exists():
+        return
+    with connect() as conn:
+        stats_count = conn.execute("SELECT COUNT(*) FROM division_daily_stats").fetchone()[0]
+        reports_count = conn.execute("SELECT COUNT(*) FROM reports").fetchone()[0]
+        if stats_count or reports_count:
+            return
+
+        seed = json.loads(SEED_PATH.read_text(encoding="utf-8"))
+        reports = seed.get("reports", [])
+        stats = seed.get("division_daily_stats", [])
+
+        conn.executemany(
+            """
+            INSERT OR REPLACE INTO reports (
+                report_date, title, page_url, pdf_url, pdf_path, status,
+                validation_message, downloaded_at, extracted_at
+            )
+            VALUES (
+                :report_date, :title, :page_url, :pdf_url, :pdf_path, :status,
+                :validation_message, :downloaded_at, :extracted_at
+            )
+            """,
+            reports,
+        )
+        conn.executemany(
+            """
+            INSERT OR REPLACE INTO division_daily_stats (
+                report_date, division,
+                suspected_24h, suspected_deaths_24h, confirmed_24h, confirmed_deaths_24h,
+                admitted_24h, discharged_24h,
+                suspected_total, suspected_deaths_total, confirmed_total, confirmed_deaths_total,
+                admitted_total, discharged_total
+            )
+            VALUES (
+                :report_date, :division,
+                :suspected_24h, :suspected_deaths_24h, :confirmed_24h, :confirmed_deaths_24h,
+                :admitted_24h, :discharged_24h,
+                :suspected_total, :suspected_deaths_total, :confirmed_total, :confirmed_deaths_total,
+                :admitted_total, :discharged_total
+            )
+            """,
+            stats,
         )
 
 
