@@ -483,21 +483,36 @@ if not previous_window.empty:
 chart_tab, heatmap_tab = st.tabs(["Trends", "Heatmap"])
 
 with chart_tab:
-    metric_options = [
-        "suspected_24h",
-        "confirmed_24h",
-        "admitted_24h",
-        "discharged_24h",
-        "suspected_deaths_24h",
-        "confirmed_deaths_24h",
-    ]
+    trend_options = {
+        "24h outbreak pressure": {
+            "column": "new_total_24h",
+            "label": "24h suspected + confirmed",
+            "description": "Best quick signal for whether reported measles pressure is rising or falling.",
+        },
+        "24h deaths": {
+            "column": "new_deaths_24h",
+            "label": "24h deaths",
+            "description": "Shows reported suspected + confirmed deaths in the last 24 hours.",
+        },
+        "24h admission pressure": {
+            "column": "net_admitted_24h",
+            "label": "24h admitted minus discharged",
+            "description": "Shows whether hospital burden is increasing after discharges are considered.",
+        },
+        "Cumulative confirmed": {
+            "column": "confirmed_total",
+            "label": "Cumulative confirmed",
+            "description": "Longer-term confirmed burden from validated reports.",
+        },
+    }
     control_col1, control_col2 = st.columns([1, 1])
     with control_col1:
-        metric = st.selectbox(
-            "Metric",
-            metric_options,
-            format_func=lambda x: x.replace("_", " ").title(),
+        trend_focus = st.selectbox(
+            "Trend focus",
+            list(trend_options.keys()),
         )
+        metric = trend_options[trend_focus]["column"]
+        st.caption(trend_options[trend_focus]["description"])
 
     latest_by_division = (
         filtered[filtered["report_date"] == filtered["report_date"].max()]
@@ -524,10 +539,58 @@ with chart_tab:
     if chart_data.empty:
         st.info("Choose at least one division to show the trend chart.")
     else:
-        fig = px.line(chart_data.sort_values("report_date"), x="report_date", y=metric, color="division", markers=True)
+        national_trend = (
+            filtered.groupby("report_date", as_index=False)[metric]
+            .sum()
+            .assign(division="Bangladesh total")
+        )
+        chart_lines = pd.concat(
+            [
+                national_trend,
+                chart_data[["report_date", "division", metric]],
+            ],
+            ignore_index=True,
+        )
+        fig = px.line(
+            chart_lines.sort_values("report_date"),
+            x="report_date",
+            y=metric,
+            color="division",
+            markers=True,
+            color_discrete_map={"Bangladesh total": "#d71920"},
+        )
         fig.update_xaxes(range=[str(start_date), str(end_date)])
-        fig.update_layout(height=460, margin=dict(l=10, r=10, t=30, b=10), yaxis_title="")
+        fig.update_traces(line=dict(width=2.4))
+        fig.update_traces(selector=dict(name="Bangladesh total"), line=dict(width=5), marker=dict(size=9))
+        fig.update_layout(
+            height=460,
+            margin=dict(l=10, r=10, t=30, b=10),
+            yaxis_title=trend_options[trend_focus]["label"],
+            legend_title_text="Trend line",
+        )
         st.plotly_chart(fig, use_container_width=True)
+
+        daily_summary = (
+            filtered.groupby("report_date", as_index=False)
+            .agg(
+                total_24h=("new_total_24h", "sum"),
+                deaths_24h=("new_deaths_24h", "sum"),
+                net_admitted_24h=("net_admitted_24h", "sum"),
+            )
+            .sort_values("report_date")
+        )
+        daily_summary["7-day average"] = daily_summary["total_24h"].rolling(7, min_periods=1).mean().round(1)
+        daily_summary["Change from previous day"] = daily_summary["total_24h"].diff().fillna(0).astype(int)
+        daily_summary = daily_summary.rename(
+            columns={
+                "report_date": "Date",
+                "total_24h": "24h suspected + confirmed",
+                "deaths_24h": "24h deaths",
+                "net_admitted_24h": "24h net admitted",
+            }
+        )
+        daily_summary["Date"] = daily_summary["Date"].dt.strftime("%Y-%m-%d")
+        st.dataframe(daily_summary.tail(7), use_container_width=True, hide_index=True)
 
 with heatmap_tab:
     heat_col1, heat_col2 = st.columns([1, 1])
