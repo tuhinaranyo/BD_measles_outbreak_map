@@ -14,7 +14,7 @@ from measles_dashboard.db import init_db
 from measles_dashboard.ui import inject_style
 
 
-st.set_page_config(page_title="DGHS Measles Dashboard", layout="wide")
+st.set_page_config(page_title="বাংলাদেশ হাম সতর্কতা", layout="wide")
 inject_style()
 
 
@@ -25,6 +25,29 @@ RISK_STYLE = {
 }
 
 MAP_PATH = ROOT / "assets" / "bd_divisions_svg.json"
+STATUS_BN = {
+    "High alert": "বেশি সতর্কতা",
+    "Watch closely": "খেয়াল রাখুন",
+    "Lower signal": "কম সংকেত",
+}
+TREND_LINE_BD = "সারা বাংলাদেশ"
+
+
+def bn_num(value: object) -> str:
+    return f"{value:,}".translate(str.maketrans("0123456789", "০১২৩৪৫৬৭৮৯"))
+
+
+def bn_date(value: object) -> str:
+    return str(value).translate(str.maketrans("0123456789", "০১২৩৪৫৬৭৮৯"))
+
+
+def bn_table_value(value: object) -> str:
+    if pd.isna(value):
+        return ""
+    number = float(value)
+    if number.is_integer():
+        return bn_num(int(number))
+    return bn_num(round(number, 1))
 
 
 @st.cache_data(ttl=3600)
@@ -51,12 +74,13 @@ def render_warning_map(map_data: pd.DataFrame, latest_date: pd.Timestamp) -> str
             suspected = int(row["suspected_24h"] or 0)
             confirmed = int(row["confirmed_24h"] or 0)
         style = RISK_STYLE[status]
+        status_label = STATUS_BN[status]
         label_x, label_y = shape["label"]
         alert_symbol = "!" if status == "High alert" else "•" if status == "Watch closely" else ""
         regions.append(
             f"""
             <path class="bd-region" d="{shape['path']}" fill="{style['soft']}" stroke="{style['color']}">
-                <title>{escape(shape['name'])}: {escape(status)}, 24h total {total:,}, deaths {deaths:,}</title>
+                <title>{escape(division)}: {escape(status_label)}, ২৪ ঘণ্টায় মোট {bn_num(total)}, মৃত্যু {bn_num(deaths)}</title>
             </path>
             """
         )
@@ -65,8 +89,8 @@ def render_warning_map(map_data: pd.DataFrame, latest_date: pd.Timestamp) -> str
             <g class="bd-label">
                 <circle cx="{label_x}" cy="{label_y - 18}" r="13" fill="{style['color']}"></circle>
                 <text x="{label_x}" y="{label_y - 13}" class="bd-alert-symbol">{alert_symbol}</text>
-                <text x="{label_x}" y="{label_y + 7}" class="bd-name">{escape(shape['name'])}</text>
-                <text x="{label_x}" y="{label_y + 28}" class="bd-count">{total:,}</text>
+                <text x="{label_x}" y="{label_y + 7}" class="bd-name">{escape(division)}</text>
+                <text x="{label_x}" y="{label_y + 28}" class="bd-count">{bn_num(total)}</text>
             </g>
             """
         )
@@ -74,8 +98,8 @@ def render_warning_map(map_data: pd.DataFrame, latest_date: pd.Timestamp) -> str
             f"""
             <div class="bd-map-card">
                 <span style="background:{style['color']}"></span>
-                <b>{escape(shape['name'])}</b>
-                <small>{escape(status)} · 24h {total:,} · deaths {deaths:,}</small>
+                <b>{escape(division)}</b>
+                <small>{escape(status_label)} · ২৪ ঘণ্টায় {bn_num(total)} · মৃত্যু {bn_num(deaths)}</small>
             </div>
             """
         )
@@ -243,17 +267,17 @@ def render_warning_map(map_data: pd.DataFrame, latest_date: pd.Timestamp) -> str
     </style>
     <section class="bd-map-panel">
         <div class="bd-map-copy">
-            <div class="public-kicker">Division warning map</div>
-            <h2>Where families should watch closely today</h2>
-            <p>Static division borders with live alert colors from the latest validated DGHS report. The number on each division is suspected + confirmed reports in the last 24 hours.</p>
+            <div class="public-kicker">বিভাগভিত্তিক সতর্কতা</div>
+            <h2>আজ কোন এলাকায় বেশি খেয়াল রাখবেন</h2>
+            <p>রঙ দেখে দ্রুত বুঝুন। লাল মানে বেশি সতর্কতা, হলুদ মানে খেয়াল রাখুন, সবুজ মানে আজকের সংকেত কম। মানচিত্রের সংখ্যা হলো গত ২৪ ঘণ্টায় সন্দেহজনক ও নিশ্চিত রোগীর মোট সংখ্যা।</p>
             <div class="bd-map-legend">
-                <span><i class="high"></i> High alert</span>
-                <span><i class="watch"></i> Watch closely</span>
-                <span><i class="lower"></i> Lower signal</span>
+                <span><i class="high"></i> বেশি সতর্কতা</span>
+                <span><i class="watch"></i> খেয়াল রাখুন</span>
+                <span><i class="lower"></i> কম সংকেত</span>
             </div>
-            <small class="bd-map-source">Boundary source: Bangladesh GeoJSON / geoBoundaries.</small>
+            <small class="bd-map-source">তথ্য: স্বাস্থ্য অধিদপ্তরের দৈনিক পিডিএফ রিপোর্ট থেকে।</small>
         </div>
-        <div class="bd-map-wrap" aria-label="Bangladesh division warning map for {latest_date.date()}">
+        <div class="bd-map-wrap" aria-label="বাংলাদেশের বিভাগভিত্তিক সতর্কতা মানচিত্র {bn_date(latest_date.date())}">
             <svg class="bd-map-svg" viewBox="{division_map['viewBox']}" role="img">
                 <rect x="0" y="0" width="{division_map['width']}" height="{division_map['height']}" rx="28" fill="#f7fbf7"></rect>
                 <g>{''.join(regions)}</g>
@@ -282,16 +306,16 @@ st.markdown(
     """
     <section class="public-header">
         <div>
-            <div class="public-kicker">Bangladesh measles alert</div>
-            <h1>Protect children by seeing where measles is rising</h1>
-            <p>Daily DGHS reports made easier to understand, so families, communities, and caregivers can notice risk early and act with care.</p>
+            <div class="public-kicker">বাংলাদেশে হাম সতর্কতা</div>
+            <h1>কোথায় হাম বাড়ছে, সহজে দেখুন</h1>
+            <p>স্বাস্থ্য অধিদপ্তরের দৈনিক রিপোর্ট থেকে সহজ ভাষায় তথ্য। শিশুকে সুরক্ষিত রাখতে আগে জানুন, দ্রুত ব্যবস্থা নিন।</p>
         </div>
     </section>
     <div class="care-note">
         <div class="care-mark">!</div>
         <div>
-            <b>Every number here represents families who need protection and support.</b>
-            <span>Use the latest 24-hour signals to stay aware, check vaccination status, and seek medical advice quickly if a child has fever with rash or measles-like symptoms.</span>
+            <b>প্রতিটি সংখ্যা একটি পরিবার, একটি শিশু, একটি চিন্তার গল্প।</b>
+            <span>জ্বরের সঙ্গে র‍্যাশ, চোখ লাল, কাশি বা হাম-এর মতো লক্ষণ দেখলে দ্রুত চিকিৎসকের পরামর্শ নিন। শিশুর টিকা হয়েছে কি না দেখে নিন।</span>
         </div>
     </div>
     """,
@@ -299,9 +323,9 @@ st.markdown(
 )
 
 if stats.empty:
-    st.info("No extracted report data yet. Run `python update_data.py`, or place PDFs in `data/raw_pdfs` and run `python update_data.py --local-only`.")
+    st.info("এখনও দেখানোর মতো রিপোর্ট ডেটা নেই। অ্যাডমিন প্যানেল থেকে নতুন রিপোর্ট আনুন।")
     if not reports.empty:
-        st.subheader("Reports needing attention")
+        st.subheader("যেসব রিপোর্ট দেখতে হবে")
         st.dataframe(reports[["report_date", "title", "status", "validation_message"]], use_container_width=True)
     st.stop()
 
@@ -316,10 +340,10 @@ validated_count = int((reports["status"] == "extracted").sum()) if not reports.e
 st.markdown(
     f"""
     <div class="update-strip">
-        <span>Latest: <b>{all_max_date}</b></span>
-        <span>Reports: <b>{validated_count}</b></span>
-        <span>Divisions: <b>{len(public_divisions)}</b></span>
-        <span>Window: <b>15 days</b></span>
+        <span>সর্বশেষ: <b>{bn_date(all_max_date)}</b></span>
+        <span>রিপোর্ট: <b>{bn_num(validated_count)}</b></span>
+        <span>বিভাগ: <b>{bn_num(len(public_divisions))}</b></span>
+        <span>সময়: <b>শেষ ১৫ দিন</b></span>
     </div>
     """,
     unsafe_allow_html=True,
@@ -328,7 +352,7 @@ if not show_review_rows:
     stats = stats[stats["report_date"].dt.strftime("%Y-%m-%d").isin(valid_report_dates)].copy()
 
 if stats.empty:
-    st.warning("No validated report rows are available for the selected mode.")
+    st.warning("এখনও যাচাই করা রিপোর্ট পাওয়া যায়নি।")
     st.stop()
 
 default_start_date = max(all_min_date, all_max_date - pd.Timedelta(days=14))
@@ -356,10 +380,10 @@ total_confirmed = int(latest["confirmed_total"].fillna(0).sum())
 st.markdown(
     f"""
     <div class="metric-grid">
-        <div class="metric-tile green"><b>24h suspected</b><span>{today_suspected:,}</span></div>
-        <div class="metric-tile blue"><b>24h confirmed</b><span>{today_confirmed:,}</span></div>
-        <div class="metric-tile coral"><b>24h deaths</b><span>{today_deaths:,}</span></div>
-        <div class="metric-tile violet"><b>Cumulative confirmed</b><span>{total_confirmed:,}</span></div>
+        <div class="metric-tile green"><b>২৪ ঘণ্টায় সন্দেহজনক</b><span>{bn_num(today_suspected)}</span></div>
+        <div class="metric-tile blue"><b>২৪ ঘণ্টায় নিশ্চিত</b><span>{bn_num(today_confirmed)}</span></div>
+        <div class="metric-tile coral"><b>২৪ ঘণ্টায় মৃত্যু</b><span>{bn_num(today_deaths)}</span></div>
+        <div class="metric-tile violet"><b>মোট নিশ্চিত</b><span>{bn_num(total_confirmed)}</span></div>
     </div>
     """,
     unsafe_allow_html=True,
@@ -407,7 +431,7 @@ map_data["division_label"] = map_data["division"].map(lambda value: division_nam
 
 components.html(render_warning_map(map_data, latest_date), height=840, scrolling=False)
 
-st.subheader("Where is increasing now?")
+st.subheader("এখন কোথায় বেশি বাড়ছে?")
 ranking = (
     latest[
         [
@@ -423,19 +447,23 @@ ranking = (
     ]
     .rename(
         columns={
-            "division": "Division",
-            "new_total_24h": "24h suspected + confirmed",
-            "suspected_24h": "24h suspected",
-            "confirmed_24h": "24h confirmed",
-            "new_deaths_24h": "24h deaths",
-            "admitted_24h": "24h admitted",
-            "discharged_24h": "24h discharged",
-            "net_admitted_24h": "24h net admitted",
+            "division": "বিভাগ",
+            "new_total_24h": "২৪ ঘণ্টায় সন্দেহজনক + নিশ্চিত",
+            "suspected_24h": "২৪ ঘণ্টায় সন্দেহজনক",
+            "confirmed_24h": "২৪ ঘণ্টায় নিশ্চিত",
+            "new_deaths_24h": "২৪ ঘণ্টায় মৃত্যু",
+            "admitted_24h": "২৪ ঘণ্টায় ভর্তি",
+            "discharged_24h": "২৪ ঘণ্টায় ছাড়পত্র",
+            "net_admitted_24h": "ভর্তি চাপ",
         }
     )
-    .sort_values(["24h suspected + confirmed", "24h confirmed"], ascending=False)
+    .sort_values(["২৪ ঘণ্টায় সন্দেহজনক + নিশ্চিত", "২৪ ঘণ্টায় নিশ্চিত"], ascending=False)
 )
-st.dataframe(ranking, use_container_width=True, hide_index=True)
+ranking_display = ranking.copy()
+for column in ranking_display.columns:
+    if column != "বিভাগ":
+        ranking_display[column] = ranking_display[column].map(bn_table_value)
+st.dataframe(ranking_display, use_container_width=True, hide_index=True)
 
 if not previous_window.empty:
     seven_day = previous_window[previous_window["report_date"] >= latest_date - pd.Timedelta(days=7)]
@@ -452,12 +480,12 @@ if not previous_window.empty:
 
     def pct_change(current: float, baseline_value: float) -> str:
         if pd.isna(baseline_value) or baseline_value <= 0:
-            return "no previous baseline"
+            return "আগের গড় নেই"
         change = ((current - baseline_value) / baseline_value) * 100
-        direction = "higher" if change >= 0 else "lower"
-        return f"{abs(change):.0f}% {direction}"
+        direction = "বেশি" if change >= 0 else "কম"
+        return f"{bn_num(round(abs(change)))}% {direction}"
 
-    st.subheader("7-day rise signals")
+    st.subheader("৭ দিনের তুলনায় কী বোঝা যাচ্ছে")
     for _, row in alerts.iterrows():
         cases_today = int(row["new_total_24h"] or 0)
         cases_avg = float(row["new_total_24h_avg7"] or 0)
@@ -465,50 +493,50 @@ if not previous_window.empty:
         deaths_avg = float(row["new_deaths_24h_avg7"] or 0)
         yesterday_cases = row.get("new_total_24h_yesterday")
         yesterday_deaths = row.get("new_deaths_24h_yesterday")
-        status = "Increasing" if cases_today > cases_avg else "Stable or lower"
+        status = "বাড়ছে" if cases_today > cases_avg else "কম বা স্থির"
 
-        death_sentence = "No deaths reported in the last 24 hours"
+        death_sentence = "গত ২৪ ঘণ্টায় মৃত্যু রিপোর্ট হয়নি"
         if deaths_today:
-            death_sentence = f"Deaths are **{deaths_today:,}**, {pct_change(deaths_today, deaths_avg)} than the 7-day average"
+            death_sentence = f"মৃত্যু **{bn_num(deaths_today)}**, ৭ দিনের গড়ের চেয়ে {pct_change(deaths_today, deaths_avg)}"
             if not pd.isna(yesterday_deaths):
-                death_sentence += f" and {pct_change(deaths_today, yesterday_deaths)} than yesterday"
+                death_sentence += f", গতকালের চেয়ে {pct_change(deaths_today, yesterday_deaths)}"
 
         st.write(
-            f"**{row['division']}** — {status}: last-24-hours suspected + confirmed reports are **{cases_today:,}**, "
-            f"{pct_change(cases_today, cases_avg)} than the 7-day average"
-            f"{'' if pd.isna(yesterday_cases) else f' and {pct_change(cases_today, yesterday_cases)} than yesterday'}. "
+            f"**{row['division']}** — {status}: গত ২৪ ঘণ্টায় সন্দেহজনক + নিশ্চিত **{bn_num(cases_today)}**, "
+            f"৭ দিনের গড়ের চেয়ে {pct_change(cases_today, cases_avg)}"
+            f"{'' if pd.isna(yesterday_cases) else f', গতকালের চেয়ে {pct_change(cases_today, yesterday_cases)}'}. "
             f"{death_sentence}."
         )
 
-chart_tab, heatmap_tab = st.tabs(["Trends", "Heatmap"])
+chart_tab, heatmap_tab = st.tabs(["প্রবণতা", "হিটম্যাপ"])
 
 with chart_tab:
     trend_options = {
-        "24h outbreak pressure": {
+        "২৪ ঘণ্টার রোগের চাপ": {
             "column": "new_total_24h",
-            "label": "24h suspected + confirmed",
-            "description": "Best quick signal for whether reported measles pressure is rising or falling.",
+            "label": "২৪ ঘণ্টায় সন্দেহজনক + নিশ্চিত",
+            "description": "হাম-এর চাপ বাড়ছে নাকি কমছে, এটা বোঝার সবচেয়ে সহজ সংকেত।",
         },
-        "24h deaths": {
+        "২৪ ঘণ্টার মৃত্যু": {
             "column": "new_deaths_24h",
-            "label": "24h deaths",
-            "description": "Shows reported suspected + confirmed deaths in the last 24 hours.",
+            "label": "২৪ ঘণ্টায় মৃত্যু",
+            "description": "গত ২৪ ঘণ্টায় রিপোর্ট হওয়া সন্দেহজনক ও নিশ্চিত মৃত্যুর সংখ্যা।",
         },
-        "24h admission pressure": {
+        "হাসপাতালের চাপ": {
             "column": "net_admitted_24h",
-            "label": "24h admitted minus discharged",
-            "description": "Shows whether hospital burden is increasing after discharges are considered.",
+            "label": "২৪ ঘণ্টায় ভর্তি - ছাড়পত্র",
+            "description": "ভর্তি ও ছাড়পত্র মিলিয়ে হাসপাতালের চাপ বাড়ছে কি না।",
         },
-        "Cumulative confirmed": {
+        "মোট নিশ্চিত রোগী": {
             "column": "confirmed_total",
-            "label": "Cumulative confirmed",
-            "description": "Longer-term confirmed burden from validated reports.",
+            "label": "মোট নিশ্চিত রোগী",
+            "description": "এ পর্যন্ত নিশ্চিত রোগীর মোট চাপ।",
         },
     }
     control_col1, control_col2 = st.columns([1, 1])
     with control_col1:
         trend_focus = st.selectbox(
-            "Trend focus",
+            "কোন প্রবণতা দেখবেন",
             list(trend_options.keys()),
         )
         metric = trend_options[trend_focus]["column"]
@@ -524,25 +552,25 @@ with chart_tab:
     top_five = latest_by_division.head(5)["division"].tolist()
 
     with control_col2:
-        division_preset = st.selectbox("Division view", ["Top 3", "Top 5", "All", "Custom"])
+        division_preset = st.selectbox("বিভাগ দেখুন", ["শীর্ষ ৩", "শীর্ষ ৫", "সব", "নিজে বাছাই"])
 
-    if division_preset == "Top 3":
+    if division_preset == "শীর্ষ ৩":
         chart_divisions = top_three
-    elif division_preset == "Top 5":
+    elif division_preset == "শীর্ষ ৫":
         chart_divisions = top_five
-    elif division_preset == "All":
+    elif division_preset == "সব":
         chart_divisions = divisions
     else:
-        chart_divisions = st.multiselect("Divisions", divisions, default=top_three or divisions[:3])
+        chart_divisions = st.multiselect("বিভাগ", divisions, default=top_three or divisions[:3])
 
     chart_data = filtered[filtered["division"].isin(chart_divisions)].copy()
     if chart_data.empty:
-        st.info("Choose at least one division to show the trend chart.")
+        st.info("প্রবণতা দেখতে অন্তত একটি বিভাগ বাছাই করুন।")
     else:
         national_trend = (
             filtered.groupby("report_date", as_index=False)[metric]
             .sum()
-            .assign(division="Bangladesh total")
+            .assign(division=TREND_LINE_BD)
         )
         chart_lines = pd.concat(
             [
@@ -557,16 +585,21 @@ with chart_tab:
             y=metric,
             color="division",
             markers=True,
-            color_discrete_map={"Bangladesh total": "#d71920"},
+            color_discrete_map={TREND_LINE_BD: "#d71920"},
+            labels={
+                "report_date": "তারিখ",
+                "division": "বিভাগ",
+                metric: trend_options[trend_focus]["label"],
+            },
         )
         fig.update_xaxes(range=[str(start_date), str(end_date)])
         fig.update_traces(line=dict(width=2.4))
-        fig.update_traces(selector=dict(name="Bangladesh total"), line=dict(width=5), marker=dict(size=9))
+        fig.update_traces(selector=dict(name=TREND_LINE_BD), line=dict(width=5), marker=dict(size=9))
         fig.update_layout(
             height=460,
             margin=dict(l=10, r=10, t=30, b=10),
             yaxis_title=trend_options[trend_focus]["label"],
-            legend_title_text="Trend line",
+            legend_title_text="লাইন",
         )
         st.plotly_chart(fig, use_container_width=True)
 
@@ -579,26 +612,35 @@ with chart_tab:
             )
             .sort_values("report_date")
         )
-        daily_summary["7-day average"] = daily_summary["total_24h"].rolling(7, min_periods=1).mean().round(1)
-        daily_summary["Change from previous day"] = daily_summary["total_24h"].diff().fillna(0).astype(int)
+        daily_summary["৭ দিনের গড়"] = daily_summary["total_24h"].rolling(7, min_periods=1).mean().round(1)
+        daily_summary["গতকাল থেকে পরিবর্তন"] = daily_summary["total_24h"].diff().fillna(0).astype(int)
         daily_summary = daily_summary.rename(
             columns={
-                "report_date": "Date",
-                "total_24h": "24h suspected + confirmed",
-                "deaths_24h": "24h deaths",
-                "net_admitted_24h": "24h net admitted",
+                "report_date": "তারিখ",
+                "total_24h": "২৪ ঘণ্টায় সন্দেহজনক + নিশ্চিত",
+                "deaths_24h": "২৪ ঘণ্টায় মৃত্যু",
+                "net_admitted_24h": "ভর্তি চাপ",
             }
         )
-        daily_summary["Date"] = daily_summary["Date"].dt.strftime("%Y-%m-%d")
-        st.dataframe(daily_summary.tail(7), use_container_width=True, hide_index=True)
+        daily_summary["তারিখ"] = daily_summary["তারিখ"].dt.strftime("%Y-%m-%d").map(bn_date)
+        daily_display = daily_summary.tail(7).copy()
+        for column in daily_display.columns:
+            if column != "তারিখ":
+                daily_display[column] = daily_display[column].map(bn_table_value)
+        st.dataframe(daily_display, use_container_width=True, hide_index=True)
 
 with heatmap_tab:
     heat_col1, heat_col2 = st.columns([1, 1])
     with heat_col1:
         heat_metric = st.selectbox(
-            "Heatmap metric",
+            "হিটম্যাপে কী দেখবেন",
             ["suspected_24h", "confirmed_24h", "admitted_24h", "confirmed_total"],
-            format_func=lambda x: x.replace("_", " ").title(),
+            format_func=lambda x: {
+                "suspected_24h": "২৪ ঘণ্টায় সন্দেহজনক",
+                "confirmed_24h": "২৪ ঘণ্টায় নিশ্চিত",
+                "admitted_24h": "২৪ ঘণ্টায় ভর্তি",
+                "confirmed_total": "মোট নিশ্চিত",
+            }[x],
         )
     heat_latest = (
         filtered[filtered["report_date"] == filtered["report_date"].max()]
@@ -607,13 +649,13 @@ with heatmap_tab:
         .sort_values(heat_metric, ascending=False)
     )
     with heat_col2:
-        heat_divisions = st.multiselect("Heatmap divisions", divisions, default=heat_latest.head(6)["division"].tolist())
+        heat_divisions = st.multiselect("বিভাগ", divisions, default=heat_latest.head(6)["division"].tolist())
 
     heat_data = filtered[filtered["division"].isin(heat_divisions)].copy()
     if heat_data.empty:
-        st.info("Choose at least one division to show the heatmap.")
+        st.info("হিটম্যাপ দেখতে অন্তত একটি বিভাগ বাছাই করুন।")
     else:
         heat = heat_data.pivot_table(index="division", columns=heat_data["report_date"].dt.date, values=heat_metric, aggfunc="sum").fillna(0)
-        fig = px.imshow(heat, aspect="auto", color_continuous_scale="YlOrRd")
+        fig = px.imshow(heat, aspect="auto", color_continuous_scale="YlOrRd", labels={"x": "তারিখ", "y": "বিভাগ", "color": "সংখ্যা"})
         fig.update_layout(height=430, margin=dict(l=10, r=10, t=30, b=10))
         st.plotly_chart(fig, use_container_width=True)
