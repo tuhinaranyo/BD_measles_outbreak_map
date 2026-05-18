@@ -112,6 +112,28 @@ def seed_if_empty() -> None:
         )
 
 
+def report_status(report_date: str | None) -> str | None:
+    if not report_date:
+        return None
+    with connect() as conn:
+        row = conn.execute("SELECT status FROM reports WHERE report_date = ?", (report_date,)).fetchone()
+    return str(row["status"]) if row else None
+
+
+def latest_report_date() -> str | None:
+    with connect() as conn:
+        row = conn.execute("SELECT MAX(report_date) AS latest FROM reports").fetchone()
+    return str(row["latest"]) if row and row["latest"] else None
+
+
+def report_exists(report_date: str | None) -> bool:
+    return report_status(report_date) is not None
+
+
+def report_is_extracted(report_date: str | None) -> bool:
+    return report_status(report_date) == "extracted"
+
+
 def upsert_report(
     *,
     report_date: str | None,

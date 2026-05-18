@@ -8,8 +8,8 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-from measles_dashboard.config import DB_PATH, DIVISIONS, RAW_PDF_DIR
-from measles_dashboard.db import init_db
+from measles_dashboard.config import DB_PATH, DIVISIONS
+from measles_dashboard.db import init_db, latest_report_date, report_exists
 from measles_dashboard.extractor import extract_pdf_to_db
 from measles_dashboard.scraper import discover_report_links, download_report
 from measles_dashboard.ui import inject_style
@@ -151,16 +151,26 @@ if st.button("Check for new DGHS PDFs", type="primary", use_container_width=True
     progress = st.progress(0, text="Starting update...")
     errors: list[str] = []
     downloaded_paths: list[Path] = []
+    skipped_count = 0
 
     try:
         reports_found = discover_report_links(max_pages=12)
         update_box.write(f"Found {len(reports_found)} measles press-release item(s).")
+        latest_known = latest_report_date()
+        if latest_known:
+            update_box.write(f"Latest saved report date: {latest_known}. Older reports will be skipped.")
 
         total_reports = max(len(reports_found), 1)
         for index, report in enumerate(reports_found, start=1):
             label = report.report_date or report.title[:60]
-            progress.progress(index / total_reports * 0.45, text=f"Downloading/checking {label}")
+            progress.progress(index / total_reports * 0.55, text=f"Checking {label}")
             try:
+                if report_exists(report.report_date):
+                    skipped_count += 1
+                    continue
+                if latest_known and report.report_date and report.report_date <= latest_known:
+                    skipped_count += 1
+                    continue
                 pdf_path = download_report(report)
                 if pdf_path:
                     downloaded_paths.append(pdf_path)
@@ -170,12 +180,13 @@ if st.button("Check for new DGHS PDFs", type="primary", use_container_width=True
             except Exception as exc:
                 errors.append(f"{label}: {type(exc).__name__}: {exc}")
 
-        pdf_targets = sorted(set(downloaded_paths) | set(RAW_PDF_DIR.glob("*.pdf")), reverse=True)
-        update_box.write(f"Processing {len(pdf_targets)} saved PDF file(s).")
+        pdf_targets = sorted(set(downloaded_paths), reverse=True)
+        update_box.write(f"Skipped {skipped_count} already-extracted report(s).")
+        update_box.write(f"Processing {len(pdf_targets)} new or not-yet-valid PDF file(s).")
 
         total_pdfs = max(len(pdf_targets), 1)
         for index, pdf_path in enumerate(pdf_targets, start=1):
-            progress.progress(0.45 + (index / total_pdfs * 0.5), text=f"Extracting {pdf_path.name}")
+            progress.progress(0.55 + (index / total_pdfs * 0.4), text=f"Extracting {pdf_path.name}")
             try:
                 extract_pdf_to_db(pdf_path)
             except Exception as exc:
@@ -192,7 +203,10 @@ if st.button("Check for new DGHS PDFs", type="primary", use_container_width=True
                 st.warning(f"{len(errors) - 12} more warning/error(s) hidden.")
         else:
             update_box.update(label="Update complete.", state="complete", expanded=False)
-            st.success("DGHS PDFs downloaded and extracted. Reloading admin data.")
+            if pdf_targets:
+                st.success(f"Processed {len(pdf_targets)} new/not-yet-valid PDF file(s). Reloading admin data.")
+            else:
+                st.success("No new PDF needed processing. Existing extracted data is already up to date.")
             st.rerun()
     except Exception as exc:
         progress.empty()

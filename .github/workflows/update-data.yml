@@ -1,0 +1,38 @@
+name: Update DGHS measles data
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Bangladesh time is UTC+6. This checks hourly from 3 PM to 10 PM Bangladesh time.
+    - cron: "0 9-16 * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Update only new DGHS reports
+        run: python update_data.py --new-only --max-pages 12
+
+      - name: Export public seed data
+        run: python export_seed.py
+
+      - name: Commit updated seed data
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Update public measles seed data"
+          file_pattern: data/seed_data.json

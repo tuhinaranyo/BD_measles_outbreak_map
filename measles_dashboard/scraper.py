@@ -10,7 +10,7 @@ from urllib.request import Request, urlopen
 
 from .bangla import parse_bn_date, slug_date
 from .config import BASE_URL, PRESS_RELEASE_URL, RAW_PDF_DIR
-from .db import upsert_report
+from .db import latest_report_date, report_exists, upsert_report
 
 
 @dataclass
@@ -144,3 +144,25 @@ def collect_and_download_reports(max_pages: int = 6, limit: int | None = None) -
             paths.append(path)
             print(f"Downloaded/checked {report.report_date or report.title}")
     return paths
+
+
+def collect_and_download_new_reports(max_pages: int = 6, limit: int | None = None) -> tuple[list[Path], int]:
+    reports = discover_report_links(max_pages=max_pages)
+    if limit:
+        reports = reports[:limit]
+
+    paths: list[Path] = []
+    skipped = 0
+    latest_known = latest_report_date()
+    for report in reports:
+        if report_exists(report.report_date):
+            skipped += 1
+            continue
+        if latest_known and report.report_date and report.report_date <= latest_known:
+            skipped += 1
+            continue
+        path = download_report(report)
+        if path:
+            paths.append(path)
+            print(f"Downloaded/checked {report.report_date or report.title}")
+    return paths, skipped

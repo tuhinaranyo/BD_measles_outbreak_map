@@ -56,6 +56,8 @@ git commit -m "Update public seed data"
 git push
 ```
 
+The GitHub Actions scheduler also checks DGHS automatically every hour from 3 PM to 10 PM Bangladesh time. It downloads and extracts only reports that are not already marked `extracted`, exports `data/seed_data.json`, and commits only when public data changes.
+
 ## Run The App
 
 ```powershell
