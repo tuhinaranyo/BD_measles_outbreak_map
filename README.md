@@ -46,6 +46,16 @@ For hosted servers, set `MEASLES_DATA_DIR` to a persistent storage folder so the
 
 On Streamlit Community Cloud, the app automatically loads `data/seed_data.json` if the hosted database starts empty. This keeps the public dashboard populated after a fresh deploy.
 
+To permanently publish newly corrected local data to Streamlit Cloud, update the seed file and push:
+
+```powershell
+.\.venv\Scripts\python update_data.py
+.\.venv\Scripts\python export_seed.py
+git add data/seed_data.json
+git commit -m "Update public seed data"
+git push
+```
+
 ## Run The App
 
 ```powershell
@@ -87,6 +97,15 @@ ADMIN_PASSWORD = "choose-a-strong-password"
 ```
 
 Locally, you can set the same value as an environment variable named `ADMIN_PASSWORD`.
+
+PowerShell local run example:
+
+```powershell
+$env:ADMIN_PASSWORD="your-admin-password"
+.\.venv\Scripts\python -m streamlit run app.py --server.address localhost --server.port 8501
+```
+
+Do not commit your real password to GitHub. `.streamlit/secrets.toml` is ignored for safety; `.streamlit/secrets.example.toml` is only a template.
 
 ## Daily Update
 

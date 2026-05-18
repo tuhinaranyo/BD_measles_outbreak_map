@@ -8,10 +8,10 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-from measles_dashboard.config import DB_PATH, DIVISIONS
+from measles_dashboard.config import DB_PATH, DIVISIONS, RAW_PDF_DIR
 from measles_dashboard.db import init_db
 from measles_dashboard.extractor import extract_pdf_to_db
-from measles_dashboard.scraper import collect_and_download_reports
+from measles_dashboard.scraper import discover_report_links, download_report
 from measles_dashboard.ui import inject_style
 
 
@@ -147,17 +147,57 @@ st.caption("Pick a report date, check its PDF, edit the division table, then sav
 st.markdown("[Dashboard](/)")
 
 if st.button("Check for new DGHS PDFs", type="primary", use_container_width=True):
-    progress = st.progress(0, text="Opening DGHS press release list...")
-    with st.spinner("Checking DGHS and processing report PDFs..."):
-        downloaded_paths = collect_and_download_reports(max_pages=6)
-        total = max(len(downloaded_paths), 1)
-        for index, pdf_path in enumerate(downloaded_paths, start=1):
-            progress.progress(index / total, text=f"Extracting {pdf_path.name}")
-            extract_pdf_to_db(pdf_path)
-    progress.progress(1.0, text=f"Done. Processed {len(downloaded_paths)} PDF file(s).")
-    load_data.clear()
-    st.success("Update complete. Reloading admin data.")
-    st.rerun()
+    update_box = st.status("Opening DGHS press release list...", expanded=True)
+    progress = st.progress(0, text="Starting update...")
+    errors: list[str] = []
+    downloaded_paths: list[Path] = []
+
+    try:
+        reports_found = discover_report_links(max_pages=12)
+        update_box.write(f"Found {len(reports_found)} measles press-release item(s).")
+
+        total_reports = max(len(reports_found), 1)
+        for index, report in enumerate(reports_found, start=1):
+            label = report.report_date or report.title[:60]
+            progress.progress(index / total_reports * 0.45, text=f"Downloading/checking {label}")
+            try:
+                pdf_path = download_report(report)
+                if pdf_path:
+                    downloaded_paths.append(pdf_path)
+                    update_box.write(f"PDF ready: {pdf_path.name}")
+                else:
+                    errors.append(f"No PDF found for {label}")
+            except Exception as exc:
+                errors.append(f"{label}: {type(exc).__name__}: {exc}")
+
+        pdf_targets = sorted(set(downloaded_paths) | set(RAW_PDF_DIR.glob("*.pdf")), reverse=True)
+        update_box.write(f"Processing {len(pdf_targets)} saved PDF file(s).")
+
+        total_pdfs = max(len(pdf_targets), 1)
+        for index, pdf_path in enumerate(pdf_targets, start=1):
+            progress.progress(0.45 + (index / total_pdfs * 0.5), text=f"Extracting {pdf_path.name}")
+            try:
+                extract_pdf_to_db(pdf_path)
+            except Exception as exc:
+                errors.append(f"{pdf_path.name}: {type(exc).__name__}: {exc}")
+
+        progress.progress(1.0, text="Update finished.")
+        load_data.clear()
+
+        if errors:
+            update_box.update(label=f"Finished with {len(errors)} warning/error(s).", state="error", expanded=True)
+            for item in errors[:12]:
+                st.warning(item)
+            if len(errors) > 12:
+                st.warning(f"{len(errors) - 12} more warning/error(s) hidden.")
+        else:
+            update_box.update(label="Update complete.", state="complete", expanded=False)
+            st.success("DGHS PDFs downloaded and extracted. Reloading admin data.")
+            st.rerun()
+    except Exception as exc:
+        progress.empty()
+        update_box.update(label="Update failed before completion.", state="error", expanded=True)
+        st.exception(exc)
 
 if reports.empty:
     st.info("No reports found yet. Use the button above to check DGHS.")
