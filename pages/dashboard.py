@@ -302,26 +302,6 @@ def load_data() -> tuple[pd.DataFrame, pd.DataFrame]:
 
 stats, reports = load_data()
 
-st.markdown(
-    """
-    <section class="public-header">
-        <div>
-            <div class="public-kicker">বাংলাদেশে হাম সতর্কতা</div>
-            <h1>কোথায় হাম বাড়ছে, সহজে দেখুন</h1>
-            <p>স্বাস্থ্য অধিদপ্তরের দৈনিক রিপোর্ট থেকে সহজ ভাষায় তথ্য। শিশুকে সুরক্ষিত রাখতে আগে জানুন, দ্রুত ব্যবস্থা নিন।</p>
-        </div>
-    </section>
-    <div class="care-note">
-        <div class="care-mark">!</div>
-        <div>
-            <b>প্রতিটি সংখ্যা একটি পরিবার, একটি শিশু, একটি চিন্তার গল্প।</b>
-            <span>জ্বরের সঙ্গে র‍্যাশ, চোখ লাল, কাশি বা হাম-এর মতো লক্ষণ দেখলে দ্রুত চিকিৎসকের পরামর্শ নিন। শিশুর টিকা হয়েছে কি না দেখে নিন।</span>
-        </div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
 if stats.empty:
     st.info("এখনও দেখানোর মতো রিপোর্ট ডেটা নেই। অ্যাডমিন প্যানেল থেকে নতুন রিপোর্ট আনুন।")
     if not reports.empty:
