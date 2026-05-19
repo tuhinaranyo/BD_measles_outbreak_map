@@ -504,7 +504,7 @@ def inject_style() -> None:
             flex-wrap: wrap;
             gap: 8px;
             justify-content: flex-end;
-            margin: -4px 2px 18px;
+            margin: 18px 2px 18px;
             color: #6c7d73;
             font-size: .78rem;
             font-weight: 700;
@@ -572,7 +572,7 @@ def inject_style() -> None:
                 justify-content: flex-start;
                 gap: 6px;
                 font-size: .72rem;
-                margin-top: -2px;
+                margin-top: 16px;
             }
             .update-strip span {
                 padding: 4px 8px;
