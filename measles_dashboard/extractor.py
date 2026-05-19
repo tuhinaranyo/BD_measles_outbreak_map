@@ -35,6 +35,9 @@ DIVISION_ALIASES = {
     "বনরশাল": "বরিশাল",
     "বনিশাল": "বরিশাল",
     "বনরশাে": "বরিশাল",
+    "বনশাে": "বরিশাল",
+    "বনশাল": "বরিশাল",
+    "বন শাে": "বরিশাল",
     "সিলেট": "সিলেট",
     "নসন্দলট": "সিলেট",
     "নসন্দেট": "সিলেট",
@@ -130,7 +133,7 @@ def parse_table_rows_from_pdf_tables(tables: list[list[list[str | None]]], repor
             numbers = row_to_numbers(text_cells)
             if len(numbers) < len(FIELDS):
                 continue
-            is_total = bool(re.search(r"(^|\s)(মোট|সমাট|যমাট)($|\s)", joined))
+            is_total = any(token in joined for token in ["মোট", "সমাট", "যমাট"])
             if not division and not is_total:
                 continue
             candidates.append((numbers[-len(FIELDS) :], division, is_total))

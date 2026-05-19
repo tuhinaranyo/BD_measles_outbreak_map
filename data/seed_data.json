@@ -9,7 +9,7 @@
       "status": "extracted",
       "validation_message": "Validated against মোট row.",
       "downloaded_at": "2026-05-16 13:21:25",
-      "extracted_at": "2026-05-17 13:16:56"
+      "extracted_at": "2026-05-18 09:36:05"
     },
     {
       "report_date": "2026-05-11",
@@ -20,7 +20,7 @@
       "status": "extracted",
       "validation_message": "Validated against মোট row.",
       "downloaded_at": "2026-05-16 13:21:24",
-      "extracted_at": "2026-05-17 13:16:55"
+      "extracted_at": "2026-05-18 09:36:04"
     },
     {
       "report_date": "2026-05-12",
@@ -31,7 +31,7 @@
       "status": "extracted",
       "validation_message": "Validated against মোট row.",
       "downloaded_at": "2026-05-16 13:21:23",
-      "extracted_at": "2026-05-17 13:16:54"
+      "extracted_at": "2026-05-18 09:36:03"
     },
     {
       "report_date": "2026-05-14",
@@ -42,7 +42,7 @@
       "status": "extracted",
       "validation_message": "Validated against মোট row.",
       "downloaded_at": "2026-05-16 13:21:22",
-      "extracted_at": "2026-05-17 13:16:52"
+      "extracted_at": "2026-05-18 09:36:01"
     },
     {
       "report_date": "2026-05-15",
@@ -53,7 +53,7 @@
       "status": "extracted",
       "validation_message": "Validated against মোট row.",
       "downloaded_at": "2026-05-16 13:19:41",
-      "extracted_at": "2026-05-17 13:16:51"
+      "extracted_at": "2026-05-18 09:36:00"
     },
     {
       "report_date": "2026-05-16",
@@ -64,7 +64,7 @@
       "status": "extracted",
       "validation_message": "Validated against মোট row.",
       "downloaded_at": "2026-05-16 13:19:40",
-      "extracted_at": "2026-05-17 13:16:50"
+      "extracted_at": "2026-05-18 09:35:59"
     },
     {
       "report_date": "2026-05-17",
@@ -75,7 +75,18 @@
       "status": "extracted",
       "validation_message": "Manually reviewed/edited in admin.",
       "downloaded_at": "2026-05-17 13:16:43",
-      "extracted_at": "2026-05-17 13:18:08"
+      "extracted_at": "2026-05-18 10:22:39"
+    },
+    {
+      "report_date": "2026-05-18",
+      "title": "Local PDF 2026-05-18.pdf",
+      "page_url": "manual-import",
+      "pdf_url": "https://objectstorage.ap-dcc-gazipur-1.oraclecloud15.com/n/axvjbnqprylg/b/V2Ministry/o/office-dghs/2026/4/a376bebb-000b-466b-945c-64febb6a2e8f.pdf",
+      "pdf_path": "data\\raw_pdfs\\2026-05-18.pdf",
+      "status": "extracted",
+      "validation_message": "Validated against মোট row.",
+      "downloaded_at": "2026-05-19 05:07:02",
+      "extracted_at": "2026-05-19 05:08:32"
     }
   ],
   "division_daily_stats": [
@@ -974,6 +985,134 @@
       "confirmed_deaths_total": 3,
       "admitted_total": 2262,
       "discharged_total": 1825
+    },
+    {
+      "report_date": "2026-05-18",
+      "division": "খুলনা",
+      "suspected_24h": 102,
+      "suspected_deaths_24h": 0,
+      "confirmed_24h": 0,
+      "confirmed_deaths_24h": 0,
+      "admitted_24h": 100,
+      "discharged_24h": 136,
+      "suspected_total": 4239,
+      "suspected_deaths_total": 19,
+      "confirmed_total": 244,
+      "confirmed_deaths_total": 0,
+      "admitted_total": 3822,
+      "discharged_total": 3434
+    },
+    {
+      "report_date": "2026-05-18",
+      "division": "চট্টগ্রাম",
+      "suspected_24h": 253,
+      "suspected_deaths_24h": 1,
+      "confirmed_24h": 8,
+      "confirmed_deaths_24h": 0,
+      "admitted_24h": 245,
+      "discharged_24h": 267,
+      "suspected_total": 8875,
+      "suspected_deaths_total": 36,
+      "confirmed_total": 592,
+      "confirmed_deaths_total": 8,
+      "admitted_total": 8082,
+      "discharged_total": 7652
+    },
+    {
+      "report_date": "2026-05-18",
+      "division": "ঢাকা",
+      "suspected_24h": 697,
+      "suspected_deaths_24h": 2,
+      "confirmed_24h": 69,
+      "confirmed_deaths_24h": 0,
+      "admitted_24h": 486,
+      "discharged_24h": 475,
+      "suspected_total": 26821,
+      "suspected_deaths_total": 155,
+      "confirmed_total": 5510,
+      "confirmed_deaths_total": 47,
+      "admitted_total": 18714,
+      "discharged_total": 16850
+    },
+    {
+      "report_date": "2026-05-18",
+      "division": "বরিশাল",
+      "suspected_24h": 121,
+      "suspected_deaths_24h": 0,
+      "confirmed_24h": 0,
+      "confirmed_deaths_24h": 0,
+      "admitted_24h": 120,
+      "discharged_24h": 154,
+      "suspected_total": 4583,
+      "suspected_deaths_total": 29,
+      "confirmed_total": 158,
+      "confirmed_deaths_total": 13,
+      "admitted_total": 3921,
+      "discharged_total": 3623
+    },
+    {
+      "report_date": "2026-05-18",
+      "division": "ময়মনসিংহ",
+      "suspected_24h": 49,
+      "suspected_deaths_24h": 0,
+      "confirmed_24h": 6,
+      "confirmed_deaths_24h": 0,
+      "admitted_24h": 47,
+      "discharged_24h": 51,
+      "suspected_total": 1319,
+      "suspected_deaths_total": 33,
+      "confirmed_total": 52,
+      "confirmed_deaths_total": 2,
+      "admitted_total": 1022,
+      "discharged_total": 812
+    },
+    {
+      "report_date": "2026-05-18",
+      "division": "রংপুর",
+      "suspected_24h": 17,
+      "suspected_deaths_24h": 0,
+      "confirmed_24h": 6,
+      "confirmed_deaths_24h": 0,
+      "admitted_24h": 16,
+      "discharged_24h": 1,
+      "suspected_total": 1157,
+      "suspected_deaths_total": 4,
+      "confirmed_total": 45,
+      "confirmed_deaths_total": 0,
+      "admitted_total": 492,
+      "discharged_total": 410
+    },
+    {
+      "report_date": "2026-05-18",
+      "division": "রাজশাহী",
+      "suspected_24h": 85,
+      "suspected_deaths_24h": 0,
+      "confirmed_24h": 0,
+      "confirmed_deaths_24h": 0,
+      "admitted_24h": 100,
+      "discharged_24h": 85,
+      "suspected_total": 5159,
+      "suspected_deaths_total": 78,
+      "confirmed_total": 1107,
+      "confirmed_deaths_total": 2,
+      "admitted_total": 4480,
+      "discharged_total": 4307
+    },
+    {
+      "report_date": "2026-05-18",
+      "division": "সিলেট",
+      "suspected_24h": 81,
+      "suspected_deaths_24h": 2,
+      "confirmed_24h": 0,
+      "confirmed_deaths_24h": 0,
+      "admitted_24h": 73,
+      "discharged_24h": 67,
+      "suspected_total": 2758,
+      "suspected_deaths_total": 35,
+      "confirmed_total": 148,
+      "confirmed_deaths_total": 3,
+      "admitted_total": 2335,
+      "discharged_total": 1892
     }
   ]
 }
