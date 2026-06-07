@@ -1,12 +1,31 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 from datetime import date
 from pathlib import Path
 
 from .bangla import bn_to_int, normalize_text, parse_bn_date
-from .config import DIVISIONS, TEXT_DIR
+from .config import DIVISIONS as _RAW_DIVISIONS, TEXT_DIR
 from .db import add_note, save_stats, upsert_report
+
+
+def _canon(value: str) -> str:
+    """
+    Decompose Bengali letters to a single canonical form for *matching*.
+
+    Bangla 'য়'/'ড়'/'ঢ়' are Unicode composition exclusions: NFC leaves
+    precomposed (U+09DF) and decomposed (U+09AF U+09BC) variants distinct
+    even though they render identically. NFD always decomposes, so equality
+    checks via NFD are stable. Stored / returned names stay in whatever form
+    the caller passed in (so the DB stays consistent with seed_data.json).
+    """
+    return unicodedata.normalize("NFD", value or "")
+
+
+# Public canonical lists stay in their source (NFC) form so the database
+# layer and seed_data.json keep using identical strings for joins/groupbys.
+DIVISIONS: list[str] = list(_RAW_DIVISIONS)
 
 FIELDS = [
     "suspected_24h",
@@ -23,7 +42,7 @@ FIELDS = [
     "discharged_total",
 ]
 
-DIVISION_ALIASES = {
+_RAW_DIVISION_ALIASES = {
     "চট্রগ্রাম": "চট্টগ্রাম",
     "র্ট্টগ্রাম": "চট্টগ্রাম",
     "রট্টগ্রাম": "চট্টগ্রাম",
@@ -38,22 +57,48 @@ DIVISION_ALIASES = {
     "বনশাে": "বরিশাল",
     "বনশাল": "বরিশাল",
     "বন শাে": "বরিশাল",
+    # Glyph variant first seen 2026-05-25 onwards (র→স, ল→ে).
+    "বসিশাে": "বরিশাল",
+    "বসিশাল": "বরিশাল",
+    "বসরশাে": "বরিশাল",
+    "বসরশাল": "বরিশাল",
     "সিলেট": "সিলেট",
     "নসন্দলট": "সিলেট",
     "নসন্দেট": "সিলেট",
     "নসন্দে্": "সিলেট",
-    "ময়মনসিংহ": "ময়মনসিংহ",
-    "ময়মননসিংহ": "ময়মনসিংহ",
-    "ময়মননসংহ": "ময়মনসিংহ",
-    "ময়মনচসংহ": "ময়মনসিংহ",
-    "ময়মনসিংহ": "ময়মনসিংহ",
-    "ময়মননসিংহ": "ময়মনসিংহ",
-    "ময়মননসংহ": "ময়মনসিংহ",
+    "ময়মনসিংহ": "ময়মনসিংহ",
+    "ময়মননসিংহ": "ময়মনসিংহ",
+    "ময়মননসংহ": "ময়মনসিংহ",
+    "ময়মনচসংহ": "ময়মনসিংহ",
     "খুলনা": "খুলনা",
-    "খুেনা": "খুলনা",
     "খুেনা": "খুলনা",
     "রংপুর": "রংপুর",
 }
+
+# NFD form → exact DIVISIONS member, so alias resolution always returns the
+# canonical byte sequence stored in DIVISIONS / seed_data.json regardless of
+# how the alias value was typed in the source file.
+_NFD_TO_DIVISION: dict[str, str] = {_canon(d): d for d in DIVISIONS}
+
+
+def _alias_value_to_division(value: str) -> str:
+    return _NFD_TO_DIVISION.get(_canon(value), value)
+
+
+DIVISION_ALIASES: dict[str, str] = {
+    k: _alias_value_to_division(v) for k, v in _RAW_DIVISION_ALIASES.items()
+}
+
+# Internal NFD-canonical mirror used only for matching. Keys are NFD-decomposed,
+# values are the canonical member from DIVISIONS (exact byte identity).
+_ALIAS_LOOKUP_NFD: dict[str, str] = {
+    _canon(k): _alias_value_to_division(v) for k, v in DIVISION_ALIASES.items()
+}
+_DIVISIONS_NFD: list[str] = list(_NFD_TO_DIVISION.keys())
+
+# Strings DGHS PDFs use for the row-aggregate "Total" (মোট) row.
+TOTAL_TOKENS: tuple[str, ...] = ("মোট", "সমাট", "যমাট", "মোে", "সমাে")
+_TOTAL_TOKENS_NFD: tuple[str, ...] = tuple(_canon(t) for t in TOTAL_TOKENS)
 
 
 def safe_print(message: str) -> None:
@@ -99,12 +144,22 @@ def guess_report_date(pdf_path: Path, pages: list[str]) -> str:
 
 
 def normalize_division(value: str) -> str | None:
-    text = normalize_text(value)
+    """Map a noisy division-name string back to its canonical Bangla name.
+
+    Matching is done in NFD form so that `ম + য + ়` (decomposed) and
+    `ম + য়` (precomposed) both reach the same alias. The returned canonical
+    name is in its original NFC form so the DB column stays consistent with
+    historical seed_data.
+    """
+    text = _canon(normalize_text(value))
     text = re.sub(r"[^\u0980-\u09ff]", "", text)
-    if text in DIVISION_ALIASES:
-        return DIVISION_ALIASES[text]
-    for alias, division in DIVISION_ALIASES.items():
-        if alias and alias in text:
+    if not text:
+        return None
+    direct = _ALIAS_LOOKUP_NFD.get(text)
+    if direct is not None:
+        return direct
+    for alias_nfd, division in _ALIAS_LOOKUP_NFD.items():
+        if alias_nfd and alias_nfd in text:
             return division
     return None
 
@@ -118,12 +173,22 @@ def row_to_numbers(cells: list[str | None]) -> list[int]:
     return values
 
 
+def _is_total_token(text: str) -> bool:
+    """True when ``text`` (already NFD-canonical, Bengali letters only)
+    starts with any of the known 'Total' (মোট) glyph variants.
+    """
+    if not text:
+        return False
+    return any(text.startswith(token) for token in _TOTAL_TOKENS_NFD)
+
+
 def parse_table_rows_from_pdf_tables(tables: list[list[list[str | None]]], report_date: str) -> tuple[list[dict], dict | None]:
     for table in tables:
         candidates: list[tuple[list[int], str | None, bool]] = []
         for raw_row in table:
             text_cells = [normalize_text(c or "") for c in raw_row]
-            joined = " ".join(text_cells)
+            joined_nfd = _canon(" ".join(text_cells))
+            joined_bn_only_nfd = re.sub(r"[^\u0980-\u09ff]", "", joined_nfd)
             division = None
             for cell in text_cells:
                 division = normalize_division(cell)
@@ -133,7 +198,9 @@ def parse_table_rows_from_pdf_tables(tables: list[list[list[str | None]]], repor
             numbers = row_to_numbers(text_cells)
             if len(numbers) < len(FIELDS):
                 continue
-            is_total = any(token in joined for token in ["মোট", "সমাট", "যমাট"])
+            is_total = _is_total_token(joined_bn_only_nfd) or any(
+                token in joined_nfd for token in _TOTAL_TOKENS_NFD
+            )
             if not division and not is_total:
                 continue
             candidates.append((numbers[-len(FIELDS) :], division, is_total))
@@ -174,17 +241,36 @@ def parse_table_rows_from_pdf_tables(tables: list[list[list[str | None]]], repor
 
 
 def parse_rows_from_text(text: str, report_date: str) -> tuple[list[dict], dict | None]:
+    """Fallback parser used when pdfplumber's table detector misses the grid.
+
+    Uses ``normalize_division`` so glyph-mangled division names (e.g.
+    ``বসিশাে`` for ``বরিশাল``) still resolve via ``DIVISION_ALIASES``.
+    """
     rows: list[dict] = []
     total_row: dict | None = None
     lines = [normalize_text(line) for line in text.splitlines()]
 
     for line in lines:
-        division = None
-        for candidate in DIVISIONS:
-            if candidate in line:
-                division = candidate
+        if not line:
+            continue
+        line_nfd = _canon(line)
+
+        # 1) Canonical division match in NFD space (form-agnostic).
+        division: str | None = None
+        for canonical_nfc, canonical_nfd in zip(DIVISIONS, _DIVISIONS_NFD):
+            if canonical_nfd in line_nfd:
+                division = canonical_nfc
                 break
-        is_total = line.startswith("মোট") or re.search(r"\sমোট\s", line) is not None
+        # 2) Alias-based fallback (handles mis-rendered glyphs).
+        if division is None:
+            guess = normalize_division(line)
+            if guess in DIVISIONS:
+                division = guess
+
+        # 3) Total-row detection across known glyph variants.
+        bangla_only_nfd = re.sub(r"[^\u0980-\u09ff]", "", line_nfd)
+        is_total = (not division) and _is_total_token(bangla_only_nfd)
+
         if not division and not is_total:
             continue
 

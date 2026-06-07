@@ -146,7 +146,73 @@ st.title("Admin")
 st.caption("Pick a report date, check its PDF, edit the division table, then save.")
 st.markdown("[Dashboard](/)")
 
-if st.button("Check for new DGHS PDFs", type="primary", use_container_width=True):
+def collect_needs_review_paths() -> list[Path]:
+    paths: list[Path] = []
+    with sqlite3.connect(DB_PATH) as conn:
+        rows = conn.execute(
+            "SELECT pdf_path FROM reports "
+            "WHERE status IN ('needs_review', 'downloaded', 'pdf_not_found') "
+            "AND pdf_path IS NOT NULL AND pdf_path != '' "
+            "ORDER BY report_date DESC"
+        ).fetchall()
+    for (raw,) in rows:
+        path = Path(raw)
+        if path.exists():
+            paths.append(path)
+    return paths
+
+
+action_col1, action_col2 = st.columns([1, 1])
+check_clicked = action_col1.button(
+    "Check for new DGHS PDFs", type="primary", use_container_width=True
+)
+retry_clicked = action_col2.button(
+    "Re-extract all needs-review PDFs", use_container_width=True,
+    help="Useful after an extractor fix: re-runs extraction on every PDF that previously failed."
+)
+
+if retry_clicked:
+    retry_paths = collect_needs_review_paths()
+    if not retry_paths:
+        st.info("No needs-review PDFs to re-extract.")
+    else:
+        retry_box = st.status(f"Re-extracting {len(retry_paths)} PDF(s)...", expanded=True)
+        progress = st.progress(0, text="Starting retry...")
+        errors: list[str] = []
+        recovered = 0
+        for index, pdf_path in enumerate(retry_paths, start=1):
+            progress.progress(index / len(retry_paths), text=f"Extracting {pdf_path.name}")
+            try:
+                extract_pdf_to_db(pdf_path)
+            except Exception as exc:
+                errors.append(f"{pdf_path.name}: {type(exc).__name__}: {exc}")
+        load_data.clear()
+        with sqlite3.connect(DB_PATH) as conn:
+            recovered = conn.execute(
+                "SELECT COUNT(*) FROM reports WHERE status='extracted' "
+                "AND report_date IN ({seq})".format(
+                    seq=",".join("?" for _ in retry_paths)
+                ),
+                [p.stem for p in retry_paths],
+            ).fetchone()[0]
+        if errors:
+            retry_box.update(
+                label=f"Finished with {len(errors)} warning(s); recovered {recovered}.",
+                state="error",
+                expanded=True,
+            )
+            for item in errors[:12]:
+                st.warning(item)
+        else:
+            retry_box.update(
+                label=f"Re-extract complete. {recovered} previously-broken report(s) now extracted.",
+                state="complete",
+                expanded=False,
+            )
+        st.rerun()
+
+
+if check_clicked:
     update_box = st.status("Opening DGHS press release list...", expanded=True)
     progress = st.progress(0, text="Starting update...")
     errors: list[str] = []

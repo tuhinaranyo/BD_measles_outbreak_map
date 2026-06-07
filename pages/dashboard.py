@@ -50,6 +50,34 @@ def bn_table_value(value: object) -> str:
     return bn_num(round(number, 1))
 
 
+def apply_mobile_friendly_layout(fig, *, height: int = 380) -> None:
+    """Plotly layout tweaks so charts read well on a 360–420px phone."""
+    fig.update_layout(
+        autosize=True,
+        height=height,
+        margin=dict(l=10, r=10, t=46, b=10),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="left",
+            x=0,
+            font=dict(size=11),
+        ),
+        font=dict(size=12),
+    )
+    fig.update_xaxes(automargin=True)
+    fig.update_yaxes(automargin=True)
+
+
+CHART_CONFIG: dict = {
+    "responsive": True,
+    "displayModeBar": False,
+    "doubleClick": "reset",
+    "scrollZoom": False,
+}
+
+
 @st.cache_data(ttl=3600)
 def load_division_map() -> dict:
     return json.loads(MAP_PATH.read_text(encoding="utf-8"))
@@ -317,6 +345,24 @@ public_divisions = sorted(stats["division"].dropna().unique())
 
 show_review_rows = False
 validated_count = int((reports["status"] == "extracted").sum()) if not reports.empty else 0
+
+_now_utc = pd.Timestamp.utcnow()
+if _now_utc.tzinfo is None:
+    _now_utc = _now_utc.tz_localize("UTC")
+today_bd = _now_utc.tz_convert("Asia/Dhaka").normalize().date()
+days_behind = (today_bd - all_max_date).days
+if days_behind >= 2:
+    st.markdown(
+        f"""
+        <div class="stale-data-banner">
+            <b>সর্বশেষ যাচাই করা রিপোর্ট {bn_date(all_max_date)} এর।</b>
+            এর পরের {bn_num(days_behind)} দিনের পিডিএফ এখনও যুক্ত হয়নি —
+            স্বয়ংক্রিয় আপডেট চেষ্টা করছে, অথবা অ্যাডমিন প্যানেল থেকে যাচাই করে যোগ করা হবে।
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
 st.markdown(
     f"""
     <div class="update-strip">
@@ -576,12 +622,11 @@ with chart_tab:
         fig.update_traces(line=dict(width=2.4))
         fig.update_traces(selector=dict(name=TREND_LINE_BD), line=dict(width=5), marker=dict(size=9))
         fig.update_layout(
-            height=460,
-            margin=dict(l=10, r=10, t=30, b=10),
             yaxis_title=trend_options[trend_focus]["label"],
-            legend_title_text="লাইন",
+            legend_title_text="",
         )
-        st.plotly_chart(fig, use_container_width=True)
+        apply_mobile_friendly_layout(fig, height=380)
+        st.plotly_chart(fig, use_container_width=True, config=CHART_CONFIG)
 
         daily_summary = (
             filtered.groupby("report_date", as_index=False)
@@ -637,5 +682,6 @@ with heatmap_tab:
     else:
         heat = heat_data.pivot_table(index="division", columns=heat_data["report_date"].dt.date, values=heat_metric, aggfunc="sum").fillna(0)
         fig = px.imshow(heat, aspect="auto", color_continuous_scale="YlOrRd", labels={"x": "তারিখ", "y": "বিভাগ", "color": "সংখ্যা"})
-        fig.update_layout(height=430, margin=dict(l=10, r=10, t=30, b=10))
-        st.plotly_chart(fig, use_container_width=True)
+        apply_mobile_friendly_layout(fig, height=360)
+        fig.update_xaxes(tickangle=-45)
+        st.plotly_chart(fig, use_container_width=True, config=CHART_CONFIG)

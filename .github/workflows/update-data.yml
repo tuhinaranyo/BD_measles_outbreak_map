@@ -3,8 +3,17 @@ name: Update DGHS measles data
 on:
   workflow_dispatch:
   schedule:
-    # Bangladesh time is UTC+6. This checks hourly from 3 PM to 10 PM Bangladesh time.
-    - cron: "0 9-16 * * *"
+    # Bangladesh time is UTC+6. DGHS usually publishes the daily measles PDF
+    # in the late afternoon (BST) — we try every hour from 14:00 to 22:00 BST
+    # (08:00–16:00 UTC) plus a backup at 00:00 BST so a missed afternoon run
+    # still catches the report on the same UTC day.
+    - cron: "5 8-16 * * *"
+    - cron: "0 18 * * *"
+
+# Allow only one update job at a time so we never push two competing commits.
+concurrency:
+  group: update-data
+  cancel-in-progress: false
 
 permissions:
   contents: write
@@ -12,6 +21,7 @@ permissions:
 jobs:
   update-data:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -25,14 +35,23 @@ jobs:
       - name: Install dependencies
         run: python -m pip install -r requirements.txt
 
-      - name: Update only new DGHS reports
-        run: python update_data.py --new-only --max-pages 12
+      - name: Download new + retry previously-failed reports
+        run: python update_data.py --new-only --retry-failed --max-pages 12
+        env:
+          PYTHONIOENCODING: "utf-8"
 
       - name: Export public seed data
+        if: always()
         run: python export_seed.py
+        env:
+          PYTHONIOENCODING: "utf-8"
 
-      - name: Commit updated seed data
+      - name: Commit refreshed data
+        if: always()
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "Update public measles seed data"
-          file_pattern: data/seed_data.json
+          # Always commit last_update.json too — that keeps the cron alive past
+          # GitHub's 60-day inactivity disable rule and surfaces silent
+          # failures (e.g. extractor regressions) in `git log`.
+          file_pattern: "data/seed_data.json data/last_update.json"

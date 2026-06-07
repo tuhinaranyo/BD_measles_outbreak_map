@@ -562,6 +562,32 @@ def inject_style() -> None:
         .metric-tile.coral { background: linear-gradient(135deg, #ffffff, rgba(215, 25, 32, .13)); border-top: 4px solid var(--red); }
         .metric-tile.violet { background: linear-gradient(135deg, #ffffff, rgba(197, 146, 45, .13)); border-top: 4px solid var(--gold); }
 
+        .stale-data-banner {
+            margin: 6px 0 18px;
+            padding: 12px 14px;
+            border: 1px solid rgba(215, 25, 32, .35);
+            border-left: 5px solid var(--red);
+            border-radius: 14px;
+            background: linear-gradient(135deg, #fff7f6, #fff);
+            color: #5f2f31;
+            font-size: .92rem;
+            line-height: 1.45;
+        }
+
+        .stale-data-banner b { color: var(--red); }
+
+        /* Plotly charts: let Streamlit's container handle width.
+           On phones, cap the height so the chart and its (horizontal)
+           legend both fit on the first screen. */
+        [data-testid="stPlotlyChart"] {
+            width: 100% !important;
+        }
+        [data-testid="stPlotlyChart"] > div,
+        .js-plotly-plot,
+        .plot-container {
+            width: 100% !important;
+        }
+
         @media (max-width: 760px) {
             .hero-title { font-size: 2rem; }
             .public-header { min-height: 220px; padding: 24px; }
@@ -615,6 +641,26 @@ def inject_style() -> None:
                 max-height: 132px;
                 overflow: auto;
                 padding-bottom: 2px;
+            }
+            /* Compact charts on phones. */
+            [data-testid="stPlotlyChart"] {
+                min-height: 320px;
+            }
+            .stTabs [data-baseweb="tab"] {
+                padding: 6px 12px;
+                font-size: .85rem;
+            }
+            /* Make data tables horizontally scrollable instead of squished. */
+            div[data-testid="stDataFrame"] > div {
+                overflow-x: auto !important;
+            }
+            /* Tighten dashboard headings on small screens. */
+            h2 { font-size: 1.35rem !important; }
+            h3 { font-size: 1.15rem !important; }
+            .block-container {
+                padding-left: .6rem;
+                padding-right: .6rem;
+                padding-top: 1rem;
             }
         }
         </style>
