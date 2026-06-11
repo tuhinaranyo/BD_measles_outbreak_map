@@ -47,10 +47,17 @@ RADIUS = {
 }
 
 CONTROL = {
-    "height": "38px",
-    "pad_y": "8px",
+    "height": "40px",
+    "pad_y": "10px",
     "pad_x": "14px",
     "font_size": "0.82rem",
+    "line_height": "1.45",
+}
+
+EMBED_HEIGHT = {
+    "alert": 220,
+    "map_desktop": 620,
+    "map_mobile": 920,
 }
 
 
@@ -76,11 +83,12 @@ def iframe_shell_css() -> str:
             font-family: {FONT_STACK};
             color: var(--text);
             background: transparent;
+            line-height: {CONTROL["line_height"]};
         }}
         .chip {{
             display: inline-flex;
             align-items: center;
-            gap: 7px;
+            gap: 8px;
             min-height: {CONTROL["height"]};
             padding: {CONTROL["pad_y"]} {CONTROL["pad_x"]};
             border-radius: var(--radius-pill);
@@ -89,9 +97,12 @@ def iframe_shell_css() -> str:
             backdrop-filter: blur(16px);
             font-size: {CONTROL["font_size"]};
             font-weight: 600;
+            line-height: {CONTROL["line_height"]};
             color: var(--muted);
-            white-space: nowrap;
             box-sizing: border-box;
+        }}
+        .chip-nowrap {{
+            white-space: nowrap;
         }}
         .chip b, .chip strong {{
             color: var(--text);
@@ -118,11 +129,22 @@ def iframe_shell_css() -> str:
             flex-wrap: nowrap;
             gap: 8px;
             overflow-x: auto;
+            overflow-y: visible;
             scrollbar-width: none;
             -ms-overflow-style: none;
+            padding-bottom: 4px;
         }}
         .chip-row-scroll::-webkit-scrollbar {{
             display: none;
+        }}
+        .chip-row-scroll .chip {{
+            flex: 0 0 auto;
+            white-space: nowrap;
+        }}
+        .chip-meta {{
+            color: var(--muted);
+            font-weight: 600;
+            font-size: 0.78rem;
         }}
         .surface {{
             box-sizing: border-box;
@@ -131,35 +153,8 @@ def iframe_shell_css() -> str:
             background: var(--glass);
             backdrop-filter: blur(20px);
             box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+            padding-bottom: 4px;
         }}
-    """
-
-
-def iframe_auto_height_js() -> str:
-    """Resize Streamlit html component iframe to fit content (no scrollbar)."""
-    return """
-    <script>
-    (function () {
-      function sendHeight() {
-        const height = Math.ceil(
-          Math.max(
-            document.body.scrollHeight,
-            document.documentElement.scrollHeight,
-            document.body.offsetHeight,
-            document.documentElement.offsetHeight
-          )
-        );
-        window.parent.postMessage({ type: "streamlit:setFrameHeight", height: height }, "*");
-      }
-      sendHeight();
-      window.addEventListener("load", sendHeight);
-      if (window.ResizeObserver) {
-        new ResizeObserver(sendHeight).observe(document.documentElement);
-      } else {
-        window.addEventListener("resize", sendHeight);
-      }
-    })();
-    </script>
     """
 
 
@@ -176,14 +171,15 @@ def streamlit_controls_css() -> str:
     fs = CONTROL["font_size"]
     py = CONTROL["pad_y"]
     px = CONTROL["pad_x"]
+    lh = CONTROL["line_height"]
     return f"""
-        div[data-testid="stSelectbox"] div[data-baseweb="select"] > div,
-        div[data-testid="stMultiSelect"] div[data-baseweb="select"] > div,
         div.stButton > button,
         div[data-testid="stDownloadButton"] > button,
         a[data-testid="stLinkButton"],
         .stTabs [data-baseweb="tab"] {{
             min-height: {h} !important;
+            height: auto !important;
+            line-height: {lh} !important;
             border-radius: {pill} !important;
             border: 1px solid {border} !important;
             background: {glass} !important;
@@ -191,14 +187,28 @@ def streamlit_controls_css() -> str:
             font-size: {fs} !important;
             font-weight: 600 !important;
             box-shadow: none !important;
-            transition: background 0.2s ease, transform 0.2s ease;
+            transition: background 0.2s ease;
         }}
 
         div[data-testid="stSelectbox"] div[data-baseweb="select"] > div,
         div[data-testid="stMultiSelect"] div[data-baseweb="select"] > div {{
+            min-height: {h} !important;
+            height: auto !important;
+            line-height: {lh} !important;
+            border-radius: {pill} !important;
+            border: 1px solid {border} !important;
+            background: {glass} !important;
             color: {text} !important;
-            padding-top: {py} !important;
-            padding-bottom: {py} !important;
+            font-size: {fs} !important;
+            font-weight: 600 !important;
+            box-shadow: none !important;
+            overflow: visible !important;
+        }}
+
+        div[data-testid="stSelectbox"] div[data-baseweb="select"] span,
+        div[data-testid="stMultiSelect"] div[data-baseweb="select"] span {{
+            line-height: {lh} !important;
+            overflow: visible !important;
         }}
 
         div[data-testid="stSelectbox"] div[data-baseweb="select"] svg,
@@ -217,7 +227,6 @@ def streamlit_controls_css() -> str:
         div[data-testid="stDownloadButton"] > button:hover,
         a[data-testid="stLinkButton"]:hover {{
             background: rgba(41, 151, 255, 0.15) !important;
-            transform: scale(1.01);
         }}
 
         .stTabs [data-baseweb="tab"] {{

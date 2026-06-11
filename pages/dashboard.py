@@ -15,10 +15,10 @@ from measles_dashboard.db import init_db
 from measles_dashboard.theme import (
     CHART_DIVISION_COLORS,
     COLORS,
+    EMBED_HEIGHT,
     FONT_STACK,
     NATIONAL_LINE,
     RISK,
-    iframe_auto_height_js,
     iframe_shell_css,
     plotly_base_layout,
     style_axes,
@@ -108,7 +108,7 @@ def render_public_header(latest_label: str) -> None:
     st.markdown(
         f"""
         <section class="apple-hero">
-            <p class="hero-eyebrow chip">DGHS দৈনিক রিপোর্ট</p>
+            <p class="hero-eyebrow chip chip-nowrap">DGHS দৈনিক রিপোর্ট</p>
             <h1><span class="gradient-text">বাংলাদেশ হাম</span> সতর্কতা</h1>
             <p class="hero-lead">
                 স্বাস্থ্য অধিদপ্তরের দৈনিক প্রেস রিলিজ থেকে বিভাগভিত্তিক সন্দেহজনক,
@@ -205,6 +205,10 @@ def render_alert_cards_html(map_data: pd.DataFrame) -> str:
             flex: 1 1 auto;
             color: var(--text);
         }}
+        .alert-head .chip {{
+            flex: 0 1 auto;
+            white-space: nowrap;
+        }}
         .alert-body {{
             display: flex;
             gap: 20px;
@@ -217,7 +221,7 @@ def render_alert_cards_html(map_data: pd.DataFrame) -> str:
         .alert-num {{
             font-size: 1.55rem;
             font-weight: 700;
-            line-height: 1;
+            line-height: 1.15;
             letter-spacing: -0.03em;
             color: var(--text);
         }}
@@ -239,7 +243,6 @@ def render_alert_cards_html(map_data: pd.DataFrame) -> str:
         <h3>এখন সবচেয়ে বেশি খেয়াল রাখুন</h3>
         <div class="alert-grid">{''.join(cards)}</div>
     </section>
-    {iframe_auto_height_js()}
     """
 
 
@@ -247,7 +250,7 @@ def render_alert_chips(map_data: pd.DataFrame) -> None:
     """Styled alert cards via components.html (same approach as the map)."""
     if map_data.empty:
         return
-    components.html(render_alert_cards_html(map_data), height=140, scrolling=False)
+    components.html(render_alert_cards_html(map_data), height=EMBED_HEIGHT["alert"], scrolling=False)
 
 
 def build_map_data(filtered: pd.DataFrame, target_date: pd.Timestamp) -> pd.DataFrame:
@@ -359,7 +362,7 @@ def render_warning_map(map_data: pd.DataFrame, latest_date: pd.Timestamp) -> str
             <span class="chip">
                 <span class="chip-dot" style="background:{style['color']};box-shadow:0 0 8px {style['color']}"></span>
                 <b>{escape(division)}</b>
-                <span>{escape(status_label)} · {bn_num(total)} · মৃত্যু {bn_num(deaths)}</span>
+                <span class="chip-meta">{escape(status_label)} · {bn_num(total)} · মৃত্যু {bn_num(deaths)}</span>
             </span>
             """
         )
@@ -378,7 +381,7 @@ def render_warning_map(map_data: pd.DataFrame, latest_date: pd.Timestamp) -> str
             gap: 18px;
             align-items: center;
             margin: 0;
-            padding: 20px;
+            padding: 20px 20px 28px;
         }}
         .bd-map-copy h2 {{
             margin: 8px 0 10px;
@@ -446,10 +449,6 @@ def render_warning_map(map_data: pd.DataFrame, latest_date: pd.Timestamp) -> str
         .bd-map-cards {{
             grid-column: 1 / -1;
         }}
-        .chip span {{
-            color: var(--muted);
-            font-weight: 600;
-        }}
         @media (max-width: 760px) {{
             .bd-map-panel {{
                 grid-template-columns: 1fr;
@@ -485,7 +484,6 @@ def render_warning_map(map_data: pd.DataFrame, latest_date: pd.Timestamp) -> str
         </div>
         <div class="bd-map-cards chip-row-scroll">{''.join(cards)}</div>
     </section>
-    {iframe_auto_height_js()}
     """
 
 
@@ -621,10 +619,10 @@ if days_behind >= 2:
 st.markdown(
     f"""
     <div class="glass-strip">
-        <span class="chip">সর্বশেষ: <b>{bn_date(all_max_date)}</b></span>
-        <span class="chip">রিপোর্ট: <b>{bn_num(validated_count)}</b></span>
-        <span class="chip">বিভাগ: <b>{bn_num(len(public_divisions))}</b></span>
-        <span class="chip">সময়: <b>{range_label}</b></span>
+        <span class="chip chip-nowrap">সর্বশেষ: <b>{bn_date(all_max_date)}</b></span>
+        <span class="chip chip-nowrap">রিপোর্ট: <b>{bn_num(validated_count)}</b></span>
+        <span class="chip chip-nowrap">বিভাগ: <b>{bn_num(len(public_divisions))}</b></span>
+        <span class="chip chip-nowrap">সময়: <b>{range_label}</b></span>
     </div>
     """,
     unsafe_allow_html=True,
@@ -650,7 +648,7 @@ st.markdown(
 render_alert_chips(map_data)
 
 if not map_data.empty:
-    components.html(render_warning_map(map_data, map_date), height=720, scrolling=False)
+    components.html(render_warning_map(map_data, map_date), height=EMBED_HEIGHT["map_mobile"], scrolling=False)
 else:
     st.info("নির্বাচিত তারিখে মানচিত্র দেখানোর মতো ডেটা নেই।")
 

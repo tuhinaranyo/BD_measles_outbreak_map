@@ -99,8 +99,7 @@ def inject_style() -> None:
         }}
 
         .apple-hero .hero-eyebrow.chip {{
-            letter-spacing: 0.06em;
-            text-transform: uppercase;
+            letter-spacing: 0.02em;
             font-size: 0.78rem;
         }}
 
@@ -146,7 +145,7 @@ def inject_style() -> None:
         .chip {{
             display: inline-flex;
             align-items: center;
-            gap: 7px;
+            gap: 8px;
             min-height: {CONTROL["height"]};
             padding: {CONTROL["pad_y"]} {CONTROL["pad_x"]};
             border-radius: var(--radius-pill);
@@ -155,9 +154,13 @@ def inject_style() -> None:
             backdrop-filter: blur(16px);
             font-size: {CONTROL["font_size"]};
             font-weight: 600;
+            line-height: {CONTROL["line_height"]};
             color: var(--muted);
-            white-space: nowrap;
             box-sizing: border-box;
+        }}
+
+        .chip-nowrap {{
+            white-space: nowrap;
         }}
 
         .chip b, .chip strong {{
@@ -165,10 +168,14 @@ def inject_style() -> None:
             font-weight: 700;
         }}
 
+        [data-testid="stHtml"] {{
+            margin-bottom: 0.5rem;
+        }}
+
         [data-testid="stHtml"] iframe {{
-            overflow: hidden !important;
             border: none;
             display: block;
+            width: 100% !important;
         }}
 
         {streamlit_controls_css()}
@@ -196,13 +203,13 @@ def inject_style() -> None:
             font-size: 0.8rem;
             font-weight: 600;
             color: var(--muted);
-            line-height: 1.3;
+            line-height: 1.4;
         }}
 
         .metric-tile span {{
             font-size: clamp(1.65rem, 5vw, 2.15rem);
             font-weight: 700;
-            line-height: 1;
+            line-height: 1.15;
             letter-spacing: -0.03em;
             color: var(--text);
         }}
