@@ -38,6 +38,95 @@ CHART_DIVISION_COLORS = [
 
 NATIONAL_LINE = "#2997ff"
 
+RADIUS = {
+    "sm": "12px",
+    "md": "16px",
+    "lg": "20px",
+    "xl": "24px",
+    "pill": "999px",
+}
+
+
+def iframe_shell_css(*, hide_scroll: bool = True) -> str:
+    """Shared layout tokens and chip styles for components.html iframes."""
+    overflow = "hidden" if hide_scroll else "auto"
+    return f"""
+        :root {{
+            --text: {COLORS["text"]};
+            --muted: {COLORS["muted"]};
+            --glass: {COLORS["glass"]};
+            --glass-border: {COLORS["glass_border"]};
+            --surface: {COLORS["surface"]};
+            --radius-sm: {RADIUS["sm"]};
+            --radius-md: {RADIUS["md"]};
+            --radius-lg: {RADIUS["lg"]};
+            --radius-xl: {RADIUS["xl"]};
+            --radius-pill: {RADIUS["pill"]};
+        }}
+        html, body {{
+            margin: 0;
+            padding: 0;
+            overflow: {overflow};
+            font-family: {FONT_STACK};
+            color: var(--text);
+            background: transparent;
+        }}
+        .chip {{
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            min-height: 32px;
+            padding: 6px 14px;
+            border-radius: var(--radius-pill);
+            border: 1px solid var(--glass-border);
+            background: var(--glass);
+            backdrop-filter: blur(16px);
+            font-size: 0.76rem;
+            font-weight: 600;
+            color: var(--muted);
+            white-space: nowrap;
+        }}
+        .chip b, .chip strong {{
+            color: var(--text);
+            font-weight: 700;
+        }}
+        .chip-dot {{
+            width: 8px;
+            height: 8px;
+            border-radius: var(--radius-pill);
+            flex-shrink: 0;
+        }}
+        .chip-accent {{
+            color: var(--accent, var(--text));
+            border-color: var(--accent, var(--glass-border));
+            background: var(--soft, var(--glass));
+        }}
+        .chip-row {{
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }}
+        .chip-row-scroll {{
+            display: flex;
+            flex-wrap: nowrap;
+            gap: 8px;
+            overflow-x: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }}
+        .chip-row-scroll::-webkit-scrollbar {{
+            display: none;
+        }}
+        .surface {{
+            box-sizing: border-box;
+            border-radius: var(--radius-xl);
+            border: 1px solid var(--glass-border);
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+        }}
+    """
+
 
 def plotly_base_layout(*, height: int = 420) -> dict:
     return dict(

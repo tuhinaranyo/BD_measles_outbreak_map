@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import streamlit as st
 
-from .theme import COLORS, FONT_STACK
+from .theme import COLORS, FONT_STACK, RADIUS
 
 
 def inject_style() -> None:
@@ -20,8 +20,11 @@ def inject_style() -> None:
             --link: {COLORS["link"]};
             --glass: {COLORS["glass"]};
             --glass-border: {COLORS["glass_border"]};
-            --radius-lg: 22px;
-            --radius-xl: 28px;
+            --radius-sm: {RADIUS["sm"]};
+            --radius-md: {RADIUS["md"]};
+            --radius-lg: {RADIUS["lg"]};
+            --radius-xl: {RADIUS["xl"]};
+            --radius-pill: {RADIUS["pill"]};
         }}
 
         html, body, [class*="css"] {{
@@ -94,7 +97,7 @@ def inject_style() -> None:
             display: inline-block;
             margin: 0 0 1rem;
             padding: 6px 14px;
-            border-radius: 999px;
+            border-radius: var(--radius-pill);
             border: 1px solid var(--glass-border);
             background: var(--glass);
             color: var(--muted);
@@ -143,16 +146,39 @@ def inject_style() -> None:
             margin: 0 0 1.25rem;
         }}
 
-        .glass-strip span {{
+        .chip {{
             display: inline-flex;
             align-items: center;
-            gap: 6px;
-            padding: 7px 14px;
-            border-radius: 999px;
+            gap: 7px;
+            min-height: 32px;
+            padding: 6px 14px;
+            border-radius: var(--radius-pill);
             background: var(--glass);
             border: 1px solid var(--glass-border);
             backdrop-filter: blur(16px);
-            font-size: 0.78rem;
+            font-size: 0.76rem;
+            font-weight: 600;
+            color: var(--muted);
+            white-space: nowrap;
+        }}
+
+        .chip b {{
+            color: var(--text);
+            font-weight: 700;
+        }}
+
+        .glass-strip .chip,
+        .glass-strip span {{
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            min-height: 32px;
+            padding: 6px 14px;
+            border-radius: var(--radius-pill);
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(16px);
+            font-size: 0.76rem;
             font-weight: 600;
             color: var(--muted);
         }}
@@ -160,6 +186,11 @@ def inject_style() -> None:
         .glass-strip b {{
             color: var(--text);
             font-weight: 700;
+        }}
+
+        [data-testid="stHtml"] iframe {{
+            overflow: hidden !important;
+            border: none;
         }}
 
         .metric-grid {{
@@ -272,7 +303,7 @@ def inject_style() -> None:
         }}
 
         .stTabs [data-baseweb="tab"] {{
-            border-radius: 999px;
+            border-radius: var(--radius-pill);
             border: 1px solid var(--glass-border);
             background: var(--glass);
             color: var(--muted);
@@ -289,7 +320,7 @@ def inject_style() -> None:
         div.stButton > button,
         div[data-testid="stDownloadButton"] > button,
         a[data-testid="stLinkButton"] {{
-            border-radius: 999px !important;
+            border-radius: var(--radius-pill) !important;
             border: 1px solid var(--glass-border) !important;
             background: var(--glass) !important;
             color: var(--link) !important;
@@ -316,7 +347,7 @@ def inject_style() -> None:
         [data-testid="stMultiSelect"] div[data-baseweb="select"] > div {{
             background: var(--glass) !important;
             border-color: var(--glass-border) !important;
-            border-radius: 14px !important;
+            border-radius: var(--radius-md) !important;
             color: var(--text) !important;
         }}
 
