@@ -13,28 +13,33 @@ from measles_dashboard.extractor import extract_pdf_to_db
 from measles_dashboard.scraper import (
     collect_and_download_new_reports,
     collect_and_download_reports,
+    ensure_report_pdf,
 )
 
 UPDATE_LOG_PATH = DATA_DIR / "last_update.json"
 
 
 def _reports_to_retry() -> list[Path]:
-    """Return PDF paths for reports that previously failed extraction.
-
-    A fixed extractor (new alias, new layout, etc.) should be given a chance
-    to re-process these without waiting for DGHS to re-publish them.
-    """
+    """Return PDF paths for reports that previously failed extraction."""
     with sqlite3.connect(DB_PATH) as conn:
+        conn.row_factory = sqlite3.Row
         rows = conn.execute(
-            "SELECT pdf_path FROM reports "
-            "WHERE status IN ('needs_review', 'downloaded', 'pdf_not_found') "
-            "AND pdf_path IS NOT NULL AND pdf_path != ''"
+            """
+            SELECT report_date, pdf_url, pdf_path
+            FROM reports
+            WHERE status IN ('needs_review', 'downloaded', 'pdf_not_found')
+            ORDER BY report_date DESC
+            """
         ).fetchall()
-    paths = []
+    paths: list[Path] = []
     for row in rows:
-        path = Path(row[0])
-        if path.exists():
-            paths.append(path)
+        local = ensure_report_pdf(
+            str(row["report_date"]),
+            pdf_url=row["pdf_url"],
+            pdf_path=row["pdf_path"],
+        )
+        if local:
+            paths.append(local)
     return paths
 
 

@@ -9,9 +9,9 @@ import pandas as pd
 import streamlit as st
 
 from measles_dashboard.config import DB_PATH, DIVISIONS
-from measles_dashboard.db import init_db, latest_report_date, report_exists
+from measles_dashboard.db import init_db, latest_report_date, report_is_extracted
 from measles_dashboard.extractor import extract_pdf_to_db
-from measles_dashboard.scraper import discover_report_links, download_report
+from measles_dashboard.scraper import discover_report_links, download_report, ensure_report_pdf
 from measles_dashboard.ui import inject_style
 
 
@@ -149,16 +149,23 @@ st.markdown("[Dashboard](/)")
 def collect_needs_review_paths() -> list[Path]:
     paths: list[Path] = []
     with sqlite3.connect(DB_PATH) as conn:
+        conn.row_factory = sqlite3.Row
         rows = conn.execute(
-            "SELECT pdf_path FROM reports "
-            "WHERE status IN ('needs_review', 'downloaded', 'pdf_not_found') "
-            "AND pdf_path IS NOT NULL AND pdf_path != '' "
-            "ORDER BY report_date DESC"
+            """
+            SELECT report_date, pdf_url, pdf_path
+            FROM reports
+            WHERE status IN ('needs_review', 'downloaded', 'pdf_not_found')
+            ORDER BY report_date DESC
+            """
         ).fetchall()
-    for (raw,) in rows:
-        path = Path(raw)
-        if path.exists():
-            paths.append(path)
+    for row in rows:
+        local = ensure_report_pdf(
+            str(row["report_date"]),
+            pdf_url=row["pdf_url"],
+            pdf_path=row["pdf_path"],
+        )
+        if local:
+            paths.append(local)
     return paths
 
 
@@ -231,10 +238,7 @@ if check_clicked:
             label = report.report_date or report.title[:60]
             progress.progress(index / total_reports * 0.55, text=f"Checking {label}")
             try:
-                if report_exists(report.report_date):
-                    skipped_count += 1
-                    continue
-                if latest_known and report.report_date and report.report_date <= latest_known:
+                if report_is_extracted(report.report_date):
                     skipped_count += 1
                     continue
                 pdf_path = download_report(report)
@@ -247,7 +251,7 @@ if check_clicked:
                 errors.append(f"{label}: {type(exc).__name__}: {exc}")
 
         pdf_targets = sorted(set(downloaded_paths), reverse=True)
-        update_box.write(f"Skipped {skipped_count} already-extracted report(s).")
+        update_box.write(f"Skipped {skipped_count} already-valid report(s).")
         update_box.write(f"Processing {len(pdf_targets)} new or not-yet-valid PDF file(s).")
 
         total_pdfs = max(len(pdf_targets), 1)
@@ -300,11 +304,22 @@ else:
 
     status = selected_report["status"]
     message = selected_report.get("validation_message") or "No validation note."
-    pdf_path = Path(str(selected_report.get("pdf_path") or ""))
+    local_pdf = ensure_report_pdf(
+        selected_report_date,
+        pdf_url=selected_report.get("pdf_url"),
+        pdf_path=selected_report.get("pdf_path"),
+    )
     if status == "extracted":
         st.success(f"{selected_report_date} is currently included in the public dashboard. {message}")
     else:
         st.warning(f"{selected_report_date} needs review before public use. {message}")
+        if st.button(f"Re-extract {selected_report_date}", use_container_width=True):
+            if local_pdf:
+                extract_pdf_to_db(local_pdf)
+                load_data.clear()
+                st.rerun()
+            else:
+                st.error("Could not download the PDF for this date. Check DGHS or try again later.")
 
     editable_columns = [
         "division",
@@ -336,19 +351,29 @@ else:
     pdf_col, data_col = st.columns([1, 1], gap="large")
     with pdf_col:
         st.subheader("PDF")
-        if pdf_path.exists():
-            page_total = pdf_page_count(pdf_path)
+        if local_pdf and local_pdf.exists():
+            page_total = pdf_page_count(local_pdf)
             default_page = min(2, page_total)
             page_number = st.number_input("PDF page", min_value=1, max_value=page_total, value=default_page, step=1)
-            st.image(render_pdf_page(str(pdf_path), int(page_number)), use_container_width=True)
+            st.image(render_pdf_page(str(local_pdf), int(page_number)), use_container_width=True)
             with st.expander("Open raw PDF viewer"):
-                encoded_pdf = base64.b64encode(pdf_path.read_bytes()).decode("ascii")
+                encoded_pdf = base64.b64encode(local_pdf.read_bytes()).decode("ascii")
                 st.markdown(
                     f'<iframe src="data:application/pdf;base64,{encoded_pdf}" width="100%" height="760"></iframe>',
                     unsafe_allow_html=True,
                 )
+        elif selected_report.get("pdf_url"):
+            st.info("PDF not cached yet. Use Re-extract or Check for new DGHS PDFs to download it.")
+            if st.button("Download PDF for preview", key=f"dl_{selected_report_date}"):
+                local_pdf = ensure_report_pdf(
+                    selected_report_date,
+                    pdf_url=selected_report.get("pdf_url"),
+                    pdf_path=None,
+                )
+                if local_pdf:
+                    st.rerun()
         else:
-            st.info("No local PDF file found for this date.")
+            st.info("No PDF link on record for this date.")
 
     with data_col:
         st.subheader("Extracted data")

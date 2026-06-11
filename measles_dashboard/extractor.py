@@ -100,6 +100,18 @@ _DIVISIONS_NFD: list[str] = list(_NFD_TO_DIVISION.keys())
 TOTAL_TOKENS: tuple[str, ...] = ("মোট", "সমাট", "যমাট", "মোে", "সমাে")
 _TOTAL_TOKENS_NFD: tuple[str, ...] = tuple(_canon(t) for t in TOTAL_TOKENS)
 
+# DGHS added explicit 24h-death columns from 2026-05-10; earlier PDFs pack
+# admitted/discharge counts into columns 2–5 instead.
+MODERN_FORMAT_FROM = date(2026, 5, 10)
+
+# Core fields used to accept a row set — totals for hospital flow can truncate in OCR.
+_VALIDATION_FIELDS: tuple[str, ...] = (
+    "suspected_24h",
+    "confirmed_24h",
+    "suspected_total",
+    "confirmed_total",
+)
+
 
 def safe_print(message: str) -> None:
     print(message.encode("ascii", "backslashreplace").decode("ascii"))
@@ -173,6 +185,71 @@ def row_to_numbers(cells: list[str | None]) -> list[int]:
     return values
 
 
+def uses_modern_format(report_date: str) -> bool:
+    try:
+        return date.fromisoformat(report_date) >= MODERN_FORMAT_FROM
+    except ValueError:
+        return True
+
+
+def values_to_fields(values: list[int], report_date: str) -> list[int]:
+    """Map the last 12 numeric cells to FIELDS for modern or legacy PDF layouts."""
+    chunk = values[-len(FIELDS) :]
+    if len(chunk) < len(FIELDS):
+        raise ValueError(f"Need {len(FIELDS)} numbers, got {len(chunk)}")
+
+    if uses_modern_format(report_date):
+        return chunk
+
+    # Legacy (pre-2026-05-10): col 2 is suspected hospitalised, not 24h deaths.
+    return [
+        chunk[0],
+        0,
+        chunk[2],
+        chunk[3],
+        chunk[4],
+        chunk[5],
+        chunk[6],
+        chunk[7],
+        chunk[8],
+        chunk[9],
+        chunk[10],
+        chunk[11],
+    ]
+
+
+def build_row(report_date: str, division: str, values: list[int]) -> dict:
+    parsed = {"report_date": report_date, "division": division}
+    parsed.update(dict(zip(FIELDS, values_to_fields(values, report_date))))
+    return parsed
+
+
+def fill_missing_divisions(rows: list[dict], total_row: dict | None, report_date: str) -> list[dict]:
+    """When exactly one division is absent but the total row exists, infer it by subtraction."""
+    if not total_row or not rows:
+        return rows
+
+    found = {row["division"] for row in rows}
+    missing = [division for division in DIVISIONS if division not in found]
+    if len(missing) != 1:
+        return rows
+
+    inferred: dict = {"report_date": report_date, "division": missing[0]}
+    for field in FIELDS:
+        expected = total_row.get(field) or 0
+        partial = sum((row.get(field) or 0) for row in rows)
+        diff = expected - partial
+        inferred[field] = diff if diff >= 0 else 0
+
+    candidate_rows = rows + [inferred]
+    for field in _VALIDATION_FIELDS:
+        total = sum((row.get(field) or 0) for row in candidate_rows)
+        expected = total_row.get(field)
+        if expected is not None and total != expected:
+            return rows
+    return candidate_rows
+
+
 def _is_total_token(text: str) -> bool:
     """True when ``text`` (already NFD-canonical, Bengali letters only)
     starts with any of the known 'Total' (মোট) glyph variants.
@@ -226,8 +303,7 @@ def parse_table_rows_from_pdf_tables(tables: list[list[list[str | None]]], repor
                     used_divisions.add(row_division)
                 division_index += 1
 
-            parsed = {"report_date": report_date, "division": row_division}
-            parsed.update(dict(zip(FIELDS, numbers)))
+            parsed = build_row(report_date, row_division, numbers)
 
             if row_division != "মোট":
                 rows.append(parsed)
@@ -245,8 +321,10 @@ def parse_rows_from_text(text: str, report_date: str) -> tuple[list[dict], dict 
 
     Uses ``normalize_division`` so glyph-mangled division names (e.g.
     ``বসিশাে`` for ``বরিশাল``) still resolve via ``DIVISION_ALIASES``.
+    Keeps one row per division (last match wins — the division table on
+    page 2 usually appears after any stray header fragments).
     """
-    rows: list[dict] = []
+    by_division: dict[str, dict] = {}
     total_row: dict | None = None
     lines = [normalize_text(line) for line in text.splitlines()]
 
@@ -254,24 +332,22 @@ def parse_rows_from_text(text: str, report_date: str) -> tuple[list[dict], dict 
         if not line:
             continue
         line_nfd = _canon(line)
+        bangla_only_nfd = re.sub(r"[^\u0980-\u09ff]", "", line_nfd)
 
-        # 1) Canonical division match in NFD space (form-agnostic).
         division: str | None = None
         for canonical_nfc, canonical_nfd in zip(DIVISIONS, _DIVISIONS_NFD):
-            if canonical_nfd in line_nfd:
+            if bangla_only_nfd.startswith(canonical_nfd):
                 division = canonical_nfc
                 break
-        # 2) Alias-based fallback (handles mis-rendered glyphs).
         if division is None:
             guess = normalize_division(line)
             if guess in DIVISIONS:
                 division = guess
 
-        # 3) Total-row detection across known glyph variants.
-        bangla_only_nfd = re.sub(r"[^\u0980-\u09ff]", "", line_nfd)
         is_total = (not division) and _is_total_token(bangla_only_nfd)
-
         if not division and not is_total:
+            continue
+        if "%" in line:
             continue
 
         numbers = re.findall(r"[-০-৯0-9,٬]+", line)
@@ -280,18 +356,28 @@ def parse_rows_from_text(text: str, report_date: str) -> tuple[list[dict], dict 
         if len(values) < len(FIELDS):
             continue
         values = values[-len(FIELDS) :]
-        parsed = {"report_date": report_date, "division": division or "মোট"}
-        parsed.update(dict(zip(FIELDS, values)))
+        parsed = build_row(report_date, division or "মোট", values)
 
         if division:
-            rows.append(parsed)
+            by_division[division] = parsed
         else:
             total_row = parsed
 
+    rows = [by_division[d] for d in DIVISIONS if d in by_division]
     return rows, total_row
 
 
+def _division_table_text(pages: list[str]) -> str:
+    """Prefer page 2 where DGHS prints the 8-division grid."""
+    chunks: list[str] = []
+    if len(pages) > 1:
+        chunks.append(pages[1])
+    chunks.extend(pages)
+    return "\n".join(chunks)
+
+
 def validate_rows(rows: list[dict], total_row: dict | None) -> tuple[str, str]:
+    rows = fill_missing_divisions(rows, total_row, rows[0]["report_date"] if rows else "")
     found = {row["division"] for row in rows}
     missing = [division for division in DIVISIONS if division not in found]
     messages: list[str] = []
@@ -302,10 +388,24 @@ def validate_rows(rows: list[dict], total_row: dict | None) -> tuple[str, str]:
         messages.append("Missing division rows: " + ", ".join(missing))
 
     if total_row and rows:
-        for field in FIELDS:
+        for field in _VALIDATION_FIELDS:
             total = sum((row.get(field) or 0) for row in rows)
             expected = total_row.get(field)
             if expected is not None and total != expected:
+                status = "needs_review"
+                messages.append(f"Total mismatch for {field}: rows={total}, total_row={expected}")
+                break
+        if status == "extracted":
+            for field in FIELDS:
+                if field in _VALIDATION_FIELDS:
+                    continue
+                total = sum((row.get(field) or 0) for row in rows)
+                expected = total_row.get(field)
+                if expected is None or total == expected:
+                    continue
+                # OCR often truncates long cumulative totals (e.g. "33,832" -> 3383).
+                if expected < total:
+                    continue
                 status = "needs_review"
                 messages.append(f"Total mismatch for {field}: rows={total}, total_row={expected}")
                 break
@@ -316,17 +416,18 @@ def validate_rows(rows: list[dict], total_row: dict | None) -> tuple[str, str]:
         status = "needs_review"
         messages.append("No division table rows extracted.")
 
-    suspicious_death_rows = [
-        row["division"]
-        for row in rows
-        if (row.get("suspected_deaths_24h") or 0) > 25 or (row.get("confirmed_deaths_24h") or 0) > 25
-    ]
-    if suspicious_death_rows:
-        status = "needs_review"
-        messages.append(
-            "Implausible 24h death values; possible shifted PDF columns: "
-            + ", ".join(suspicious_death_rows)
-        )
+    if uses_modern_format(rows[0]["report_date"] if rows else ""):
+        suspicious_death_rows = [
+            row["division"]
+            for row in rows
+            if (row.get("suspected_deaths_24h") or 0) > 25 or (row.get("confirmed_deaths_24h") or 0) > 25
+        ]
+        if suspicious_death_rows:
+            status = "needs_review"
+            messages.append(
+                "Implausible 24h death values; possible shifted PDF columns: "
+                + ", ".join(suspicious_death_rows)
+            )
 
     return status, "; ".join(messages) if messages else "Validated against মোট row."
 
@@ -353,8 +454,8 @@ def extract_pdf_to_db(pdf_path: Path) -> None:
         text_path.write_text("\n\n--- PAGE BREAK ---\n\n".join(pages), encoding="utf-8")
 
         rows, total_row = parse_table_rows_from_pdf_tables(extract_tables(pdf_path), report_date)
-        if len(rows) < 8:
-            rows, total_row = parse_rows_from_text("\n".join(pages), report_date)
+        if len(rows) < len(DIVISIONS):
+            rows, total_row = parse_rows_from_text(_division_table_text(pages), report_date)
 
         status, message = validate_rows(rows, total_row)
         save_stats(report_date, rows, status, message)

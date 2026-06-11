@@ -4,7 +4,17 @@ import json
 import sqlite3
 from pathlib import Path
 
-from measles_dashboard.config import DB_PATH
+from measles_dashboard.config import DB_PATH, RAW_PDF_DIR
+
+
+def _portable_pdf_path(report_date: str, pdf_path: str | None) -> str | None:
+    """Store only a repo-relative filename — never an absolute local path."""
+    if not pdf_path:
+        return None
+    name = Path(pdf_path).name
+    if name.endswith(".pdf"):
+        return f"data/raw_pdfs/{name}"
+    return f"data/raw_pdfs/{report_date}.pdf"
 
 
 def main() -> None:
@@ -38,6 +48,12 @@ def main() -> None:
                 """
             )
         ]
+
+    for report in reports:
+        report["pdf_path"] = _portable_pdf_path(
+            str(report["report_date"]),
+            report.get("pdf_path"),
+        )
 
     output_path.write_text(
         json.dumps({"reports": reports, "division_daily_stats": stats}, ensure_ascii=False, indent=2),

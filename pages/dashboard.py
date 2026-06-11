@@ -50,24 +50,37 @@ def bn_table_value(value: object) -> str:
     return bn_num(round(number, 1))
 
 
-def apply_mobile_friendly_layout(fig, *, height: int = 380) -> None:
+def apply_mobile_friendly_layout(fig, *, height: int = 380, chart_kind: str = "line") -> None:
     """Plotly layout tweaks so charts read well on a 360–420px phone."""
+    if chart_kind == "heatmap":
+        fig.update_layout(
+            autosize=True,
+            height=max(height, 440),
+            margin=dict(l=4, r=4, t=36, b=72),
+            font=dict(size=11),
+            coloraxis_colorbar=dict(len=0.75, thickness=12, tickfont=dict(size=10)),
+        )
+        fig.update_xaxes(automargin=True, tickangle=-90, tickfont=dict(size=9))
+        fig.update_yaxes(automargin=True, tickfont=dict(size=10))
+        return
+
     fig.update_layout(
         autosize=True,
-        height=height,
-        margin=dict(l=10, r=10, t=46, b=10),
+        height=max(height, 420),
+        margin=dict(l=8, r=8, t=48, b=56),
         legend=dict(
             orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="left",
-            x=0,
-            font=dict(size=11),
+            yanchor="top",
+            y=-0.18,
+            xanchor="center",
+            x=0.5,
+            font=dict(size=10),
+            itemsizing="constant",
         ),
         font=dict(size=12),
     )
-    fig.update_xaxes(automargin=True)
-    fig.update_yaxes(automargin=True)
+    fig.update_xaxes(automargin=True, tickformat="%d %b", tickfont=dict(size=10))
+    fig.update_yaxes(automargin=True, tickfont=dict(size=10))
 
 
 CHART_CONFIG: dict = {
@@ -287,9 +300,32 @@ def render_warning_map(map_data: pd.DataFrame, latest_date: pd.Timestamp) -> str
                 font-size: 17px;
             }}
             .bd-map-cards {{
-                max-height: 132px;
+                max-height: 160px;
                 overflow: auto;
                 padding-bottom: 2px;
+            }}
+        }}
+        @media (max-width: 480px) {{
+            .bd-map-panel {{
+                padding: 12px;
+            }}
+            .bd-map-copy h2 {{
+                font-size: 1.2rem;
+            }}
+            .bd-map-copy p {{
+                font-size: .88rem;
+            }}
+            .bd-name {{
+                font-size: 14px;
+            }}
+            .bd-count {{
+                font-size: 15px;
+            }}
+            .bd-alert-symbol {{
+                font-size: 14px;
+            }}
+            .bd-map-cards {{
+                max-height: 120px;
             }}
         }}
     </style>
@@ -455,7 +491,7 @@ map_data["status"] = map_data.apply(map_status, axis=1)
 division_names = {item["bn"]: item["name"] for item in load_division_map()["divisions"]}
 map_data["division_label"] = map_data["division"].map(lambda value: division_names.get(value, value))
 
-components.html(render_warning_map(map_data, latest_date), height=840, scrolling=False)
+components.html(render_warning_map(map_data, latest_date), height=620, scrolling=True)
 
 st.subheader("এখন কোথায় বেশি বাড়ছে?")
 ranking = (
@@ -681,7 +717,7 @@ with heatmap_tab:
         st.info("হিটম্যাপ দেখতে অন্তত একটি বিভাগ বাছাই করুন।")
     else:
         heat = heat_data.pivot_table(index="division", columns=heat_data["report_date"].dt.date, values=heat_metric, aggfunc="sum").fillna(0)
+        heat.columns = [col.strftime("%d/%m") for col in heat.columns]
         fig = px.imshow(heat, aspect="auto", color_continuous_scale="YlOrRd", labels={"x": "তারিখ", "y": "বিভাগ", "color": "সংখ্যা"})
-        apply_mobile_friendly_layout(fig, height=360)
-        fig.update_xaxes(tickangle=-45)
+        apply_mobile_friendly_layout(fig, height=360, chart_kind="heatmap")
         st.plotly_chart(fig, use_container_width=True, config=CHART_CONFIG)

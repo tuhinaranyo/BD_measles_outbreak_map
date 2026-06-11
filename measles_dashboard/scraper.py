@@ -13,7 +13,7 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 from .bangla import parse_bn_date, slug_date
-from .config import BASE_URL, PRESS_RELEASE_URL, RAW_PDF_DIR
+from .config import BASE_URL, PRESS_RELEASE_URL, RAW_PDF_DIR, ROOT
 from .db import latest_report_date, report_exists, upsert_report
 
 log = logging.getLogger("measles_dashboard.scraper")
@@ -245,6 +245,41 @@ def download_report(report: ReportLink) -> Path | None:
         status="downloaded",
     )
     return pdf_path
+
+
+def ensure_report_pdf(
+    report_date: str,
+    pdf_url: str | None = None,
+    pdf_path: str | None = None,
+) -> Path | None:
+    """Return a local PDF path, downloading from ``pdf_url`` when needed.
+
+    Seed data and Streamlit Cloud never ship PDF files in git — only URLs.
+    Admin uses this to fetch a PDF on demand before preview / re-extraction.
+    """
+    RAW_PDF_DIR.mkdir(parents=True, exist_ok=True)
+    candidates: list[Path] = []
+    if pdf_path:
+        raw = Path(pdf_path)
+        candidates.append(raw)
+        candidates.append(ROOT / raw)
+        candidates.append(RAW_PDF_DIR / raw.name)
+    candidates.append(RAW_PDF_DIR / f"{report_date}.pdf")
+
+    for candidate in candidates:
+        if candidate.exists() and candidate.stat().st_size > 0:
+            return candidate
+
+    if not pdf_url:
+        return None
+
+    dest = RAW_PDF_DIR / f"{report_date}.pdf"
+    try:
+        dest.write_bytes(fetch_bytes(pdf_url))
+    except Exception as exc:
+        log.warning("Could not download PDF for %s: %r", report_date, exc)
+        return None
+    return dest if dest.exists() and dest.stat().st_size > 0 else None
 
 
 def collect_and_download_reports(max_pages: int = 6, limit: int | None = None) -> list[Path]:

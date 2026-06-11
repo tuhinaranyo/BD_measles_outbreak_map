@@ -642,9 +642,21 @@ def inject_style() -> None:
                 overflow: auto;
                 padding-bottom: 2px;
             }
-            /* Compact charts on phones. */
+            /* Compact charts on phones — legend sits below the plot area. */
             [data-testid="stPlotlyChart"] {
-                min-height: 320px;
+                min-height: 360px;
+            }
+            [data-testid="stPlotlyChart"] .js-plotly-plot,
+            [data-testid="stPlotlyChart"] .plot-container {
+                min-height: 360px;
+            }
+            /* Stack chart controls vertically on narrow screens. */
+            [data-testid="stHorizontalBlock"] {
+                flex-wrap: wrap !important;
+            }
+            [data-testid="column"] {
+                min-width: 100% !important;
+                flex: 1 1 100% !important;
             }
             .stTabs [data-baseweb="tab"] {
                 padding: 6px 12px;
