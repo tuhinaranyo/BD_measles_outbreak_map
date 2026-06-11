@@ -576,6 +576,42 @@ def inject_style() -> None:
 
         .stale-data-banner b { color: var(--red); }
 
+        .alert-chips {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 10px;
+            margin: 0 0 20px;
+        }
+
+        .alert-chip {
+            border-radius: 14px;
+            padding: 12px 14px;
+            border: 1px solid var(--line);
+            background: #fff;
+            box-shadow: 0 10px 24px rgba(0, 67, 50, .06);
+            font-size: .88rem;
+            line-height: 1.45;
+        }
+
+        .alert-chip b { display: block; margin-bottom: 4px; font-size: .95rem; }
+        .alert-chip.high { border-left: 4px solid var(--red); }
+        .alert-chip.watch { border-left: 4px solid var(--gold); }
+        .alert-chip.lower { border-left: 4px solid var(--green); }
+
+        [data-testid="stSidebar"] .stDownloadButton button,
+        [data-testid="stSidebar"] a[data-testid="stLinkButton"] {
+            width: 100%;
+        }
+
+        .page-footer {
+            margin-top: 2.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--line);
+            color: var(--muted);
+            font-size: .82rem;
+            line-height: 1.5;
+        }
+
         /* Plotly charts: let Streamlit's container handle width.
            On phones, cap the height so the chart and its (horizontal)
            legend both fit on the first screen. */

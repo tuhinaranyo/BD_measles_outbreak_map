@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date
 from html import escape
 import json
 import sqlite3
@@ -89,6 +90,114 @@ CHART_CONFIG: dict = {
     "doubleClick": "reset",
     "scrollZoom": False,
 }
+
+RANGE_OPTIONS: dict[str, int | None] = {
+    "৭ দিন": 6,
+    "১৫ দিন": 14,
+    "৩০ দিন": 29,
+    "সব উপলব্ধ": None,
+}
+
+
+def render_public_header(latest_label: str) -> None:
+    st.markdown(
+        f"""
+        <section class="public-header">
+            <div>
+                <div class="public-kicker">DGHS দৈনিক রিপোর্ট</div>
+                <h1>বাংলাদেশ হাম সতর্কতা ড্যাশবোর্ড</h1>
+                <p>
+                    স্বাস্থ্য অধিদপ্তরের দৈনিক হাম প্রেস রিলিজ থেকে বিভাগভিত্তিক
+                    সন্দেহজনক, নিশ্চিত, মৃত্যু ও হাসপাতালের চাপ এক নজরে।
+                    সর্বশেষ যাচাইকৃত রিপোর্ট: <b>{latest_label}</b>
+                </p>
+            </div>
+        </section>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_alert_chips(map_data: pd.DataFrame) -> None:
+    if map_data.empty:
+        return
+    chips: list[str] = []
+    ranked = map_data.copy()
+    ranked["risk_rank"] = ranked["status"].map(lambda value: RISK_STYLE[value]["rank"])
+    ranked = ranked.sort_values(["risk_rank", "total_24h"], ascending=[False, False]).head(3)
+    css_class = {"High alert": "high", "Watch closely": "watch", "Lower signal": "lower"}
+    for _, row in ranked.iterrows():
+        status_label = STATUS_BN[str(row["status"])]
+        chips.append(
+            f"""
+            <div class="alert-chip {css_class[str(row['status'])]}">
+                <b>{escape(str(row['division']))} · {escape(status_label)}</b>
+                ২৪ ঘণ্টায় {bn_num(int(row['total_24h']))} রোগী
+                · মৃত্যু {bn_num(int(row['deaths_24h']))}
+            </div>
+            """
+        )
+    st.markdown(f'<div class="alert-chips">{"".join(chips)}</div>', unsafe_allow_html=True)
+
+
+def build_map_data(filtered: pd.DataFrame, target_date: pd.Timestamp) -> pd.DataFrame:
+    latest = filtered[filtered["report_date"] == target_date].copy()
+    previous_window = filtered[filtered["report_date"] < target_date].copy()
+    if latest.empty:
+        return latest
+
+    if previous_window.empty:
+        latest["avg_total_7d"] = 0.0
+        latest["yesterday_total"] = None
+    else:
+        map_baseline = (
+            previous_window[previous_window["report_date"] >= target_date - pd.Timedelta(days=7)]
+            .groupby("division", as_index=False)["new_total_24h"]
+            .mean()
+            .rename(columns={"new_total_24h": "avg_total_7d"})
+        )
+        yesterday_date = previous_window["report_date"].max()
+        map_yesterday = (
+            previous_window[previous_window["report_date"] == yesterday_date][["division", "new_total_24h"]]
+            .rename(columns={"new_total_24h": "yesterday_total"})
+        )
+        latest = latest.merge(map_baseline, on="division", how="left")
+        latest = latest.merge(map_yesterday, on="division", how="left")
+
+    latest["avg_total_7d"] = latest["avg_total_7d"].fillna(0)
+    latest["total_24h"] = latest["new_total_24h"].fillna(0).astype(int)
+    latest["deaths_24h"] = latest["new_deaths_24h"].fillna(0).astype(int)
+    latest["rise_vs_avg"] = latest["total_24h"] - latest["avg_total_7d"]
+    latest["status"] = latest.apply(map_status, axis=1)
+    return latest
+
+
+def map_status(row: pd.Series) -> str:
+    if row["deaths_24h"] > 0 or row["total_24h"] >= 150:
+        return "High alert"
+    if row["total_24h"] >= 75:
+        return "Watch closely"
+    if row["avg_total_7d"] > 0 and row["total_24h"] >= 20 and row["total_24h"] > row["avg_total_7d"] * 1.15:
+        return "Watch closely"
+    return "Lower signal"
+
+
+def export_csv(stats_frame: pd.DataFrame) -> bytes:
+    export = stats_frame.copy()
+    export["report_date"] = export["report_date"].dt.strftime("%Y-%m-%d")
+    return export.to_csv(index=False).encode("utf-8-sig")
+
+
+def latest_pdf_url(reports_frame: pd.DataFrame, latest_date: date) -> str | None:
+    iso = latest_date.isoformat()
+    matched = reports_frame[
+        reports_frame["report_date"].astype(str).str.startswith(iso)
+        & (reports_frame["status"] == "extracted")
+    ]
+    if matched.empty:
+        return None
+    value = matched.iloc[0].get("pdf_url")
+    return str(value) if value else None
 
 
 @st.cache_data(ttl=3600)
@@ -398,6 +507,62 @@ all_min_date = stats["report_date"].min().date()
 all_max_date = stats["report_date"].max().date()
 public_divisions = sorted(stats["division"].dropna().unique())
 
+render_public_header(bn_date(all_max_date))
+
+with st.sidebar:
+    st.subheader("সেটিংস")
+    range_label = st.selectbox("চার্ট ও টেবিলের সময়সীমা", list(RANGE_OPTIONS.keys()), index=1)
+    range_days = RANGE_OPTIONS[range_label]
+    if range_days is None:
+        start_date = all_min_date
+    else:
+        start_date = max(all_min_date, all_max_date - pd.Timedelta(days=range_days))
+    end_date = all_max_date
+
+divisions = sorted(stats["division"].dropna().unique())
+
+filtered = stats[
+    (stats["report_date"].dt.date >= start_date)
+    & (stats["report_date"].dt.date <= end_date)
+].copy()
+filtered["new_total_24h"] = filtered["suspected_24h"].fillna(0) + filtered["confirmed_24h"].fillna(0)
+filtered["new_deaths_24h"] = filtered["suspected_deaths_24h"].fillna(0) + filtered["confirmed_deaths_24h"].fillna(0)
+filtered["net_admitted_24h"] = filtered["admitted_24h"].fillna(0) - filtered["discharged_24h"].fillna(0)
+
+available_map_dates = sorted(filtered["report_date"].dt.date.unique())
+with st.sidebar:
+    map_date_value = st.selectbox(
+        "মানচিত্রের তারিখ",
+        options=available_map_dates,
+        index=len(available_map_dates) - 1,
+        format_func=lambda value: bn_date(value),
+    )
+    st.download_button(
+        "CSV ডাউনলোড",
+        data=export_csv(filtered),
+        file_name=f"measles_{start_date}_{end_date}.csv",
+        mime="text/csv",
+        use_container_width=True,
+    )
+    pdf_url = latest_pdf_url(reports, all_max_date)
+    if pdf_url:
+        st.link_button("সর্বশেষ DGHS PDF", pdf_url, use_container_width=True)
+    with st.expander("কীভাবে পড়বেন"):
+        st.markdown(
+            """
+            - **২৪ ঘণ্টার সংখ্যা** = গত রিপোর্টিং দিনের (সকাল ৮টা–৮টা) নতুন রোগী।
+            - **মোট নিশ্চিত** = outbreak শুরু থেকে জমা নিশ্চিত রোগীর সংখ্যা।
+            - **লাল সতর্কতা** = বেশি রোগী বা কোনো মৃত্যু রিপোর্ট; **হলুদ** = মাঝারি চাপ বা বাড়ছে।
+            - ডেটা DGHS PDF থেকে স্বয়ংক্রিয়ভাবে আসে; যাচাই ব্যর্থ হলে প্রকাশ হয় না।
+            """
+        )
+
+map_date = pd.Timestamp(map_date_value)
+map_data = build_map_data(filtered, map_date)
+latest_date = filtered["report_date"].max()
+latest = filtered[filtered["report_date"] == latest_date].copy()
+previous_window = filtered[filtered["report_date"] < latest_date].copy()
+
 _now_utc = pd.Timestamp.utcnow()
 if _now_utc.tzinfo is None:
     _now_utc = _now_utc.tz_localize("UTC")
@@ -421,28 +586,11 @@ st.markdown(
         <span>সর্বশেষ: <b>{bn_date(all_max_date)}</b></span>
         <span>রিপোর্ট: <b>{bn_num(validated_count)}</b></span>
         <span>বিভাগ: <b>{bn_num(len(public_divisions))}</b></span>
-        <span>সময়: <b>শেষ ১৫ দিন</b></span>
+        <span>সময়: <b>{range_label}</b></span>
     </div>
     """,
     unsafe_allow_html=True,
 )
-
-default_start_date = max(all_min_date, all_max_date - pd.Timedelta(days=14))
-start_date, end_date = default_start_date, all_max_date
-
-divisions = sorted(stats["division"].dropna().unique())
-
-filtered = stats[
-    (stats["report_date"].dt.date >= start_date)
-    & (stats["report_date"].dt.date <= end_date)
-].copy()
-filtered["new_total_24h"] = filtered["suspected_24h"].fillna(0) + filtered["confirmed_24h"].fillna(0)
-filtered["new_deaths_24h"] = filtered["suspected_deaths_24h"].fillna(0) + filtered["confirmed_deaths_24h"].fillna(0)
-filtered["net_admitted_24h"] = filtered["admitted_24h"].fillna(0) - filtered["discharged_24h"].fillna(0)
-
-latest_date = filtered["report_date"].max()
-latest = filtered[filtered["report_date"] == latest_date].copy()
-previous_window = filtered[filtered["report_date"] < latest_date].copy()
 
 today_suspected = int(latest["suspected_24h"].fillna(0).sum())
 today_confirmed = int(latest["confirmed_24h"].fillna(0).sum())
@@ -461,47 +609,38 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-map_data = latest.copy()
-if previous_window.empty:
-    map_data["avg_total_7d"] = 0.0
-    map_data["yesterday_total"] = None
+render_alert_chips(map_data)
+
+if not map_data.empty:
+    components.html(render_warning_map(map_data, map_date), height=620, scrolling=True)
 else:
-    map_baseline = (
-        previous_window[previous_window["report_date"] >= latest_date - pd.Timedelta(days=7)]
-        .groupby("division", as_index=False)["new_total_24h"]
-        .mean()
-        .rename(columns={"new_total_24h": "avg_total_7d"})
+    st.info("নির্বাচিত তারিখে মানচিত্র দেখানোর মতো ডেটা নেই।")
+
+bar_source = map_data.sort_values("new_total_24h", ascending=True)
+if not bar_source.empty:
+    st.subheader(f"{bn_date(map_date.date())} — বিভাগভিত্তিক ২৪ ঘণ্টার চাপ")
+    bar_fig = px.bar(
+        bar_source,
+        x="new_total_24h",
+        y="division",
+        orientation="h",
+        color="status",
+        color_discrete_map={
+            "High alert": RISK_STYLE["High alert"]["color"],
+            "Watch closely": RISK_STYLE["Watch closely"]["color"],
+            "Lower signal": RISK_STYLE["Lower signal"]["color"],
+        },
+        labels={
+            "new_total_24h": "২৪ ঘণ্টায় সন্দেহজনক + নিশ্চিত",
+            "division": "বিভাগ",
+            "status": "সতর্কতা",
+        },
     )
-    yesterday_date = previous_window["report_date"].max()
-    map_yesterday = (
-        previous_window[previous_window["report_date"] == yesterday_date][["division", "new_total_24h"]]
-        .rename(columns={"new_total_24h": "yesterday_total"})
-    )
-    map_data = map_data.merge(map_baseline, on="division", how="left")
-    map_data = map_data.merge(map_yesterday, on="division", how="left")
-
-map_data["avg_total_7d"] = map_data["avg_total_7d"].fillna(0)
-map_data["total_24h"] = map_data["new_total_24h"].fillna(0).astype(int)
-map_data["deaths_24h"] = map_data["new_deaths_24h"].fillna(0).astype(int)
-map_data["rise_vs_avg"] = map_data["total_24h"] - map_data["avg_total_7d"]
-max_total_24h = max(int(map_data["total_24h"].max()), 1)
-
-
-def map_status(row: pd.Series) -> str:
-    if row["deaths_24h"] > 0 or row["total_24h"] >= 150:
-        return "High alert"
-    if row["total_24h"] >= 75:
-        return "Watch closely"
-    if row["avg_total_7d"] > 0 and row["total_24h"] >= 20 and row["total_24h"] > row["avg_total_7d"] * 1.15:
-        return "Watch closely"
-    return "Lower signal"
-
-
-map_data["status"] = map_data.apply(map_status, axis=1)
-division_names = {item["bn"]: item["name"] for item in load_division_map()["divisions"]}
-map_data["division_label"] = map_data["division"].map(lambda value: division_names.get(value, value))
-
-components.html(render_warning_map(map_data, latest_date), height=620, scrolling=True)
+    bar_fig.update_layout(showlegend=False, height=max(320, 42 * len(bar_source)))
+    bar_fig.update_xaxes(automargin=True)
+    bar_fig.update_yaxes(automargin=True)
+    apply_mobile_friendly_layout(bar_fig, height=max(320, 42 * len(bar_source)), chart_kind="heatmap")
+    st.plotly_chart(bar_fig, use_container_width=True, config=CHART_CONFIG)
 
 st.subheader("এখন কোথায় বেশি বাড়ছে?")
 ranking = (
@@ -558,27 +697,28 @@ if not previous_window.empty:
         return f"{bn_num(round(abs(change)))}% {direction}"
 
     st.subheader("৭ দিনের তুলনায় কী বোঝা যাচ্ছে")
-    for _, row in alerts.iterrows():
-        cases_today = int(row["new_total_24h"] or 0)
-        cases_avg = float(row["new_total_24h_avg7"] or 0)
-        deaths_today = int(row["new_deaths_24h"] or 0)
-        deaths_avg = float(row["new_deaths_24h_avg7"] or 0)
-        yesterday_cases = row.get("new_total_24h_yesterday")
-        yesterday_deaths = row.get("new_deaths_24h_yesterday")
-        status = "বাড়ছে" if cases_today > cases_avg else "কম বা স্থির"
+    with st.expander("বিস্তারিত বিভাগভিত্তিক ব্যাখ্যা দেখুন", expanded=False):
+        for _, row in alerts.iterrows():
+            cases_today = int(row["new_total_24h"] or 0)
+            cases_avg = float(row["new_total_24h_avg7"] or 0)
+            deaths_today = int(row["new_deaths_24h"] or 0)
+            deaths_avg = float(row["new_deaths_24h_avg7"] or 0)
+            yesterday_cases = row.get("new_total_24h_yesterday")
+            yesterday_deaths = row.get("new_deaths_24h_yesterday")
+            status = "বাড়ছে" if cases_today > cases_avg else "কম বা স্থির"
 
-        death_sentence = "গত ২৪ ঘণ্টায় মৃত্যু রিপোর্ট হয়নি"
-        if deaths_today:
-            death_sentence = f"মৃত্যু **{bn_num(deaths_today)}**, ৭ দিনের গড়ের চেয়ে {pct_change(deaths_today, deaths_avg)}"
-            if not pd.isna(yesterday_deaths):
-                death_sentence += f", গতকালের চেয়ে {pct_change(deaths_today, yesterday_deaths)}"
+            death_sentence = "গত ২৪ ঘণ্টায় মৃত্যু রিপোর্ট হয়নি"
+            if deaths_today:
+                death_sentence = f"মৃত্যু **{bn_num(deaths_today)}**, ৭ দিনের গড়ের চেয়ে {pct_change(deaths_today, deaths_avg)}"
+                if not pd.isna(yesterday_deaths):
+                    death_sentence += f", গতকালের চেয়ে {pct_change(deaths_today, yesterday_deaths)}"
 
-        st.write(
-            f"**{row['division']}** — {status}: গত ২৪ ঘণ্টায় সন্দেহজনক + নিশ্চিত **{bn_num(cases_today)}**, "
-            f"৭ দিনের গড়ের চেয়ে {pct_change(cases_today, cases_avg)}"
-            f"{'' if pd.isna(yesterday_cases) else f', গতকালের চেয়ে {pct_change(cases_today, yesterday_cases)}'}. "
-            f"{death_sentence}."
-        )
+            st.write(
+                f"**{row['division']}** — {status}: গত ২৪ ঘণ্টায় সন্দেহজনক + নিশ্চিত **{bn_num(cases_today)}**, "
+                f"৭ দিনের গড়ের চেয়ে {pct_change(cases_today, cases_avg)}"
+                f"{'' if pd.isna(yesterday_cases) else f', গতকালের চেয়ে {pct_change(cases_today, yesterday_cases)}'}. "
+                f"{death_sentence}."
+            )
 
 chart_tab, heatmap_tab = st.tabs(["প্রবণতা", "হিটম্যাপ"])
 
@@ -736,3 +876,15 @@ with heatmap_tab:
         fig = px.imshow(heat, aspect="auto", color_continuous_scale="YlOrRd", labels={"x": "তারিখ", "y": "বিভাগ", "color": "সংখ্যা"})
         apply_mobile_friendly_layout(fig, height=360, chart_kind="heatmap")
         st.plotly_chart(fig, use_container_width=True, config=CHART_CONFIG)
+
+st.markdown(
+    """
+    <div class="page-footer">
+        তথ্যসূত্র: <a href="https://dghs.gov.bd/pages/press-releases/" target="_blank" rel="noopener">
+        স্বাস্থ্য অধিদপ্তর (DGHS)</a> দৈনিক হাম প্রেস রিলিজ ·
+        ডেটা স্বয়ংক্রিয়ভাবে PDF থেকে সংগ্রহ ও যাচাই করা হয় ·
+        <a href="https://github.com/tuhinaranyo/BD_measles_outbreak_map" target="_blank" rel="noopener">GitHub</a>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
