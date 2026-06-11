@@ -118,22 +118,136 @@ def render_public_header(latest_label: str) -> None:
     )
 
 
-def render_alert_chips(map_data: pd.DataFrame) -> None:
-    """Top alert divisions — native Streamlit cards (HTML classes get stripped on Cloud)."""
-    if map_data.empty:
-        return
+def render_alert_cards_html(map_data: pd.DataFrame) -> str:
     ranked = map_data.copy()
     ranked["risk_rank"] = ranked["status"].map(lambda value: RISK_STYLE[value]["rank"])
     ranked = ranked.sort_values(["risk_rank", "total_24h"], ascending=[False, False]).head(3)
-    st.markdown("**এখন সবচেয়ে বেশি খেয়াল রাখুন**")
+
+    cards: list[str] = []
     for _, row in ranked.iterrows():
+        style = RISK_STYLE[str(row["status"])]
         status_label = STATUS_BN[str(row["status"])]
-        with st.container(border=True):
-            st.markdown(f"**{row['division']}** · {status_label}")
-            st.caption(
-                f"২৪ ঘণ্টায় {bn_num(int(row['total_24h']))} রোগী · "
-                f"মৃত্যু {bn_num(int(row['deaths_24h']))}"
-            )
+        cards.append(
+            f"""
+            <article class="alert-card" style="border-left-color:{style['color']};background:linear-gradient(135deg,#fff,{style['soft']});">
+                <div class="alert-head">
+                    <span class="alert-dot" style="background:{style['color']}"></span>
+                    <strong>{escape(str(row['division']))}</strong>
+                    <span class="alert-badge" style="color:{style['color']};border-color:{style['color']}">{escape(status_label)}</span>
+                </div>
+                <div class="alert-body">
+                    <div class="alert-stat">
+                        <span class="alert-num">{bn_num(int(row['total_24h']))}</span>
+                        <span class="alert-label">২৪ ঘণ্টায় রোগী</span>
+                    </div>
+                    <div class="alert-stat">
+                        <span class="alert-num">{bn_num(int(row['deaths_24h']))}</span>
+                        <span class="alert-label">মৃত্যু</span>
+                    </div>
+                </div>
+            </article>
+            """
+        )
+
+    return f"""
+    <style>
+        body {{
+            margin: 0;
+            font-family: "Source Sans Pro", Arial, sans-serif;
+            color: #14231d;
+            background: transparent;
+        }}
+        .alert-panel h3 {{
+            margin: 0 0 12px;
+            font-size: 1.08rem;
+            font-weight: 800;
+            color: #14231d;
+        }}
+        .alert-grid {{
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+        }}
+        .alert-card {{
+            border-radius: 14px;
+            padding: 12px 14px;
+            border: 1px solid #dfe8df;
+            border-left-width: 4px;
+            border-left-style: solid;
+            box-shadow: 0 8px 22px rgba(0, 67, 50, .07);
+        }}
+        .alert-head {{
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }}
+        .alert-dot {{
+            width: 10px;
+            height: 10px;
+            border-radius: 999px;
+            flex-shrink: 0;
+        }}
+        .alert-head strong {{
+            font-size: .98rem;
+            flex: 1 1 auto;
+        }}
+        .alert-badge {{
+            font-size: .72rem;
+            font-weight: 800;
+            padding: 3px 8px;
+            border-radius: 999px;
+            border: 1px solid;
+            background: rgba(255,255,255,.85);
+            white-space: nowrap;
+        }}
+        .alert-body {{
+            display: flex;
+            gap: 16px;
+        }}
+        .alert-stat {{
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }}
+        .alert-num {{
+            font-size: 1.45rem;
+            font-weight: 900;
+            line-height: 1;
+            color: #14231d;
+        }}
+        .alert-label {{
+            font-size: .72rem;
+            color: #65736c;
+            font-weight: 700;
+        }}
+        @media (max-width: 760px) {{
+            .alert-grid {{
+                grid-template-columns: 1fr;
+            }}
+            .alert-card {{
+                padding: 11px 12px;
+            }}
+            .alert-num {{
+                font-size: 1.3rem;
+            }}
+        }}
+    </style>
+    <section class="alert-panel">
+        <h3>এখন সবচেয়ে বেশi খেয়াল রাখুন</h3>
+        <div class="alert-grid">{''.join(cards)}</div>
+    </section>
+    """
+
+
+def render_alert_chips(map_data: pd.DataFrame) -> None:
+    """Styled alert cards via components.html (same approach as the map)."""
+    if map_data.empty:
+        return
+    card_count = min(3, len(map_data))
+    frame_height = 58 + card_count * 96
+    components.html(render_alert_cards_html(map_data), height=frame_height, scrolling=False)
 
 
 def build_map_data(filtered: pd.DataFrame, target_date: pd.Timestamp) -> pd.DataFrame:
