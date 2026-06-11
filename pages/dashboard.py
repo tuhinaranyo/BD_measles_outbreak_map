@@ -12,18 +12,15 @@ import streamlit.components.v1 as components
 
 from measles_dashboard.config import DB_PATH, ROOT
 from measles_dashboard.db import init_db
-from measles_dashboard.ui import inject_style
+from measles_dashboard.theme import CHART_DIVISION_COLORS, COLORS, FONT_STACK, NATIONAL_LINE, RISK, plotly_base_layout, style_axes
+from measles_dashboard.ui import inject_style, section_title
 
 
 st.set_page_config(page_title="বাংলাদেশ হাম সতর্কতা", layout="wide", initial_sidebar_state="collapsed")
 inject_style()
 
 
-RISK_STYLE = {
-    "High alert": {"color": "#d71920", "soft": "#fff0ef", "rank": 3},
-    "Watch closely": {"color": "#c5922d", "soft": "#fff8e6", "rank": 2},
-    "Lower signal": {"color": "#006a4e", "soft": "#edf7f0", "rank": 1},
-}
+RISK_STYLE = RISK
 
 MAP_PATH = ROOT / "assets" / "bd_divisions_svg.json"
 STATUS_BN = {
@@ -52,36 +49,34 @@ def bn_table_value(value: object) -> str:
 
 
 def apply_mobile_friendly_layout(fig, *, height: int = 380, chart_kind: str = "line") -> None:
-    """Plotly layout tweaks so charts read well on a 360–420px phone."""
+    """Plotly layout aligned with the Apple-style dark dashboard."""
+    layout = plotly_base_layout(height=max(height, 400 if chart_kind == "line" else 440))
     if chart_kind == "heatmap":
-        fig.update_layout(
-            autosize=True,
-            height=max(height, 440),
-            margin=dict(l=4, r=4, t=36, b=72),
-            font=dict(size=11),
-            coloraxis_colorbar=dict(len=0.75, thickness=12, tickfont=dict(size=10)),
+        layout["margin"] = dict(l=8, r=8, t=36, b=72)
+        layout["coloraxis_colorbar"] = dict(
+            len=0.75,
+            thickness=12,
+            tickfont=dict(size=10, color=COLORS["muted"]),
+            outlinewidth=0,
         )
-        fig.update_xaxes(automargin=True, tickangle=-90, tickfont=dict(size=9))
-        fig.update_yaxes(automargin=True, tickfont=dict(size=10))
+        fig.update_layout(**layout)
+        fig.update_xaxes(tickangle=-90, tickfont=dict(size=9))
+        style_axes(fig)
         return
 
-    fig.update_layout(
-        autosize=True,
-        height=max(height, 420),
-        margin=dict(l=8, r=8, t=48, b=56),
-        legend=dict(
-            orientation="h",
-            yanchor="top",
-            y=-0.18,
-            xanchor="center",
-            x=0.5,
-            font=dict(size=10),
-            itemsizing="constant",
-        ),
-        font=dict(size=12),
+    layout["margin"] = dict(l=10, r=10, t=44, b=64)
+    layout["legend"] = dict(
+        orientation="h",
+        yanchor="top",
+        y=-0.22,
+        xanchor="center",
+        x=0.5,
+        font=dict(size=10, color=COLORS["muted"]),
+        bgcolor="rgba(0,0,0,0)",
     )
-    fig.update_xaxes(automargin=True, tickformat="%d %b", tickfont=dict(size=10))
-    fig.update_yaxes(automargin=True, tickfont=dict(size=10))
+    fig.update_layout(**layout)
+    fig.update_xaxes(tickformat="%d %b")
+    style_axes(fig)
 
 
 CHART_CONFIG: dict = {
@@ -102,16 +97,14 @@ RANGE_OPTIONS: dict[str, int | None] = {
 def render_public_header(latest_label: str) -> None:
     st.markdown(
         f"""
-        <section class="public-header">
-            <div>
-                <div class="public-kicker">DGHS দৈনিক রিপোর্ট</div>
-                <h1>বাংলাদেশ হাম সতর্কতা ড্যাশবোর্ড</h1>
-                <p>
-                    স্বাস্থ্য অধিদপ্তরের দৈনিক হাম প্রেস রিলিজ থেকে বিভাগভিত্তিক
-                    সন্দেহজনক, নিশ্চিত, মৃত্যু ও হাসপাতালের চাপ এক নজরে।
-                    সর্বশেষ যাচাইকৃত রিপোর্ট: <b>{latest_label}</b>
-                </p>
-            </div>
+        <section class="apple-hero">
+            <p class="hero-eyebrow">DGHS দৈনিক রিপোর্ট</p>
+            <h1><span class="gradient-text">বাংলাদেশ হাম</span> সতর্কতা</h1>
+            <p class="hero-lead">
+                স্বাস্থ্য অধিদপ্তরের দৈনিক প্রেস রিলিজ থেকে বিভাগভিত্তিক সন্দেহজনক,
+                নিশ্চিত, মৃত্যু ও হাসপাতালের চাপ — এক নজরে।
+                সর্বশেষ যাচাইকৃত রিপোর্ট: <b>{latest_label}</b>
+            </p>
         </section>
         """,
         unsafe_allow_html=True,
@@ -129,11 +122,11 @@ def render_alert_cards_html(map_data: pd.DataFrame) -> str:
         status_label = STATUS_BN[str(row["status"])]
         cards.append(
             f"""
-            <article class="alert-card" style="border-left-color:{style['color']};background:linear-gradient(135deg,#fff,{style['soft']});">
+            <article class="alert-card" style="--accent:{style['color']};--glow:{style['glow']};--soft:{style['soft']};">
                 <div class="alert-head">
-                    <span class="alert-dot" style="background:{style['color']}"></span>
+                    <span class="alert-dot"></span>
                     <strong>{escape(str(row['division']))}</strong>
-                    <span class="alert-badge" style="color:{style['color']};border-color:{style['color']}">{escape(status_label)}</span>
+                    <span class="alert-badge">{escape(status_label)}</span>
                 </div>
                 <div class="alert-body">
                     <div class="alert-stat">
@@ -153,79 +146,85 @@ def render_alert_cards_html(map_data: pd.DataFrame) -> str:
     <style>
         body {{
             margin: 0;
-            font-family: "Source Sans Pro", Arial, sans-serif;
-            color: #14231d;
+            font-family: {FONT_STACK};
+            color: {COLORS["text"]};
             background: transparent;
         }}
         .alert-panel h3 {{
-            margin: 0 0 12px;
-            font-size: 1.08rem;
-            font-weight: 800;
-            color: #14231d;
+            margin: 0 0 14px;
+            font-size: 1.05rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: {COLORS["text"]};
         }}
         .alert-grid {{
             display: flex;
-            gap: 10px;
+            gap: 12px;
             overflow-x: auto;
             scroll-snap-type: x mandatory;
             -webkit-overflow-scrolling: touch;
-            padding-bottom: 2px;
+            padding-bottom: 4px;
         }}
         .alert-card {{
-            flex: 0 0 min(88vw, 260px);
+            flex: 0 0 min(88vw, 272px);
             scroll-snap-align: start;
-            border-radius: 14px;
-            padding: 12px 14px;
-            border: 1px solid #dfe8df;
-            border-left-width: 4px;
-            border-left-style: solid;
-            box-shadow: 0 8px 22px rgba(0, 67, 50, .07);
+            border-radius: 20px;
+            padding: 16px 18px;
+            background: {COLORS["glass"]};
+            border: 1px solid {COLORS["glass_border"]};
+            box-shadow: 0 0 32px var(--glow), inset 0 1px 0 rgba(255,255,255,0.08);
+            backdrop-filter: blur(20px);
         }}
         .alert-head {{
             display: flex;
             align-items: center;
             gap: 8px;
             flex-wrap: wrap;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
         }}
         .alert-dot {{
             width: 10px;
             height: 10px;
             border-radius: 999px;
             flex-shrink: 0;
+            background: var(--accent);
+            box-shadow: 0 0 10px var(--accent);
         }}
         .alert-head strong {{
             font-size: .98rem;
             flex: 1 1 auto;
+            color: {COLORS["text"]};
         }}
         .alert-badge {{
             font-size: .72rem;
-            font-weight: 800;
-            padding: 3px 8px;
+            font-weight: 700;
+            padding: 4px 10px;
             border-radius: 999px;
-            border: 1px solid;
-            background: rgba(255,255,255,.85);
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            background: var(--soft);
             white-space: nowrap;
         }}
         .alert-body {{
             display: flex;
-            gap: 16px;
+            gap: 20px;
         }}
         .alert-stat {{
             display: flex;
             flex-direction: column;
-            gap: 2px;
+            gap: 4px;
         }}
         .alert-num {{
-            font-size: 1.45rem;
-            font-weight: 900;
+            font-size: 1.55rem;
+            font-weight: 700;
             line-height: 1;
-            color: #14231d;
+            letter-spacing: -0.03em;
+            color: {COLORS["text"]};
         }}
         .alert-label {{
             font-size: .72rem;
-            color: #65736c;
-            font-weight: 700;
+            color: {COLORS["muted"]};
+            font-weight: 600;
         }}
         @media (min-width: 900px) {{
             .alert-grid {{
@@ -237,7 +236,7 @@ def render_alert_cards_html(map_data: pd.DataFrame) -> str:
         }}
     </style>
     <section class="alert-panel">
-        <h3>এখন সবচেয়ে বেশi খেয়াল রাখুন</h3>
+        <h3>এখন সবচেয়ে বেশি খেয়াল রাখুন</h3>
         <div class="alert-grid">{''.join(cards)}</div>
     </section>
     """
@@ -247,7 +246,7 @@ def render_alert_chips(map_data: pd.DataFrame) -> None:
     """Styled alert cards via components.html (same approach as the map)."""
     if map_data.empty:
         return
-    components.html(render_alert_cards_html(map_data), height=158, scrolling=False)
+    components.html(render_alert_cards_html(map_data), height=172, scrolling=False)
 
 
 def build_map_data(filtered: pd.DataFrame, target_date: pd.Timestamp) -> pd.DataFrame:
@@ -367,53 +366,64 @@ def render_warning_map(map_data: pd.DataFrame, latest_date: pd.Timestamp) -> str
     return f"""
     <style>
         :root {{
-            --ink: #14231d;
-            --muted: #65736c;
-            --line: #dfe8df;
-            --green: #006a4e;
-            --red: #d71920;
-            --gold: #c5922d;
+            --text: {COLORS["text"]};
+            --muted: {COLORS["muted"]};
+            --glass: {COLORS["glass"]};
+            --glass-border: {COLORS["glass_border"]};
+            --surface: {COLORS["surface"]};
+            --red: {RISK_STYLE["High alert"]["color"]};
+            --gold: {RISK_STYLE["Watch closely"]["color"]};
+            --green: {RISK_STYLE["Lower signal"]["color"]};
         }}
         body {{
             margin: 0;
-            font-family: "Source Sans Pro", Arial, sans-serif;
-            color: var(--ink);
+            font-family: {FONT_STACK};
+            color: var(--text);
             background: transparent;
         }}
         .bd-map-panel {{
             box-sizing: border-box;
             display: grid;
             grid-template-columns: minmax(0, .86fr) minmax(320px, 1.1fr);
-            gap: 18px;
+            gap: 20px;
             align-items: center;
             margin: 0;
-            padding: 20px;
-            border: 1px solid rgba(0, 106, 78, .18);
-            border-radius: 18px;
+            padding: 22px;
+            border: 1px solid var(--glass-border);
+            border-radius: 28px;
             background:
-                linear-gradient(135deg, rgba(255,255,255,.96), rgba(237,247,240,.92)),
-                linear-gradient(90deg, rgba(0,106,78,.06) 1px, transparent 1px);
-            box-shadow: 0 18px 44px rgba(0, 67, 50, .09);
+                radial-gradient(ellipse 70% 50% at 20% 0%, rgba(94, 92, 230, 0.14), transparent 55%),
+                radial-gradient(ellipse 50% 40% at 100% 100%, rgba(255, 55, 95, 0.08), transparent 50%),
+                var(--glass);
+            backdrop-filter: blur(24px);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
         }}
-        .public-kicker {{
+        .map-kicker {{
             display: inline-flex;
-            color: var(--red);
-            font-size: .78rem;
-            font-weight: 850;
+            margin-bottom: 10px;
+            padding: 5px 12px;
+            border-radius: 999px;
+            border: 1px solid var(--glass-border);
+            background: rgba(255,255,255,0.04);
+            color: var(--muted);
+            font-size: .72rem;
+            font-weight: 700;
+            letter-spacing: .06em;
             text-transform: uppercase;
-            letter-spacing: .04em;
-            margin-bottom: 8px;
         }}
         .bd-map-copy h2 {{
-            margin: 4px 0 8px;
-            font-size: 1.65rem;
+            margin: 4px 0 10px;
+            font-size: clamp(1.25rem, 3vw, 1.65rem);
             line-height: 1.12;
+            letter-spacing: -0.02em;
+            font-weight: 700;
+            color: var(--text);
         }}
         .bd-map-copy p {{
             color: var(--muted);
             line-height: 1.55;
-            margin: 0 0 12px;
-            font-size: .96rem;
+            margin: 0 0 14px;
+            font-size: .92rem;
         }}
         .bd-map-legend, .bd-map-cards {{
             display: flex;
@@ -422,8 +432,8 @@ def render_warning_map(map_data: pd.DataFrame, latest_date: pd.Timestamp) -> str
         }}
         .bd-map-source {{
             display: block;
-            margin-top: 10px;
-            color: #718178;
+            margin-top: 12px;
+            color: var(--muted);
             font-size: .72rem;
             line-height: 1.35;
         }}
@@ -432,30 +442,32 @@ def render_warning_map(map_data: pd.DataFrame, latest_date: pd.Timestamp) -> str
             align-items: center;
             gap: 7px;
             min-height: 30px;
-            padding: 6px 10px;
+            padding: 6px 12px;
             border-radius: 999px;
-            border: 1px solid rgba(0, 67, 50, .12);
-            background: rgba(255, 255, 255, .88);
-            color: var(--ink);
-            font-size: .78rem;
-            font-weight: 800;
+            border: 1px solid var(--glass-border);
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text);
+            font-size: .76rem;
+            font-weight: 600;
         }}
         .bd-map-legend i, .bd-map-card span {{
             width: 10px;
             height: 10px;
             border-radius: 999px;
             display: inline-block;
+            box-shadow: 0 0 8px currentColor;
         }}
-        .bd-map-legend .high {{ background: var(--red); }}
-        .bd-map-legend .watch {{ background: var(--gold); }}
-        .bd-map-legend .lower {{ background: var(--green); }}
+        .bd-map-legend .high {{ background: var(--red); color: var(--red); }}
+        .bd-map-legend .watch {{ background: var(--gold); color: var(--gold); }}
+        .bd-map-legend .lower {{ background: var(--green); color: var(--green); }}
         .bd-map-wrap {{
             justify-self: center;
             width: min(100%, 470px);
-            padding: 10px;
-            border-radius: 22px;
-            background: linear-gradient(180deg, #ffffff, #f2faf4);
-            border: 1px solid rgba(0, 106, 78, .12);
+            padding: 12px;
+            border-radius: 24px;
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 24px 48px rgba(0, 0, 0, 0.35);
         }}
         .bd-map-svg {{
             width: 100%;
@@ -464,9 +476,9 @@ def render_warning_map(map_data: pd.DataFrame, latest_date: pd.Timestamp) -> str
             overflow: visible;
         }}
         .bd-region {{
-            stroke-width: 3.2;
+            stroke-width: 2.8;
             stroke-linejoin: round;
-            filter: drop-shadow(0 6px 10px rgba(0, 67, 50, .10));
+            filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.35));
         }}
         .bd-label text {{
             text-anchor: middle;
@@ -474,18 +486,18 @@ def render_warning_map(map_data: pd.DataFrame, latest_date: pd.Timestamp) -> str
         }}
         .bd-alert-symbol {{
             fill: #ffffff;
-            font-size: 17px;
-            font-weight: 900;
+            font-size: 16px;
+            font-weight: 700;
         }}
         .bd-name {{
-            fill: #16372d;
-            font-size: 18px;
-            font-weight: 900;
+            fill: {COLORS["text"]};
+            font-size: 17px;
+            font-weight: 700;
         }}
         .bd-count {{
-            fill: #5f2f31;
-            font-size: 19px;
-            font-weight: 900;
+            fill: {COLORS["muted"]};
+            font-size: 18px;
+            font-weight: 700;
         }}
         .bd-map-cards {{
             grid-column: 1 / -1;
@@ -495,29 +507,22 @@ def render_warning_map(map_data: pd.DataFrame, latest_date: pd.Timestamp) -> str
         }}
         .bd-map-card small {{
             color: var(--muted);
-            font-size: .74rem;
-            font-weight: 750;
+            font-size: .72rem;
+            font-weight: 600;
         }}
         @media (max-width: 760px) {{
             .bd-map-panel {{
                 grid-template-columns: 1fr;
-                padding: 14px;
-                gap: 12px;
-                border-radius: 16px;
-            }}
-            .bd-map-copy h2 {{
-                font-size: 1.35rem;
+                padding: 16px;
+                gap: 14px;
+                border-radius: 22px;
             }}
             .bd-map-wrap {{
                 width: min(100%, 360px);
-                padding: 6px;
+                padding: 8px;
             }}
-            .bd-name {{
-                font-size: 16px;
-            }}
-            .bd-count {{
-                font-size: 17px;
-            }}
+            .bd-name {{ font-size: 15px; }}
+            .bd-count {{ font-size: 16px; }}
             .bd-map-cards {{
                 max-height: 160px;
                 overflow: auto;
@@ -525,34 +530,18 @@ def render_warning_map(map_data: pd.DataFrame, latest_date: pd.Timestamp) -> str
             }}
         }}
         @media (max-width: 480px) {{
-            .bd-map-panel {{
-                padding: 12px;
-            }}
-            .bd-map-copy h2 {{
-                font-size: 1.2rem;
-            }}
-            .bd-map-copy p {{
-                font-size: .88rem;
-            }}
-            .bd-name {{
-                font-size: 14px;
-            }}
-            .bd-count {{
-                font-size: 15px;
-            }}
-            .bd-alert-symbol {{
-                font-size: 14px;
-            }}
-            .bd-map-cards {{
-                max-height: 120px;
-            }}
+            .bd-map-panel {{ padding: 14px; }}
+            .bd-name {{ font-size: 13px; }}
+            .bd-count {{ font-size: 14px; }}
+            .bd-alert-symbol {{ font-size: 13px; }}
+            .bd-map-cards {{ max-height: 120px; }}
         }}
     </style>
     <section class="bd-map-panel">
         <div class="bd-map-copy">
-            <div class="public-kicker">বিভাগভিত্তিক সতর্কতা</div>
+            <div class="map-kicker">বিভাগভিত্তিক সতর্কতা</div>
             <h2>আজ কোন এলাকায় বেশি খেয়াল রাখবেন</h2>
-            <p>রঙ দেখে দ্রুত বুঝুন। লাল মানে বেশি সতর্কতা, হলুদ মানে খেয়াল রাখুন, সবুজ মানে আজকের সংকেত কম। মানচিত্রের সংখ্যা হলো গত ২৪ ঘণ্টায় সন্দেহজনক ও নিশ্চিত রোগীর মোট সংখ্যা।</p>
+            <p>রঙ দেখে দ্রুত বুঝুন। লাল = বেশি সতর্কতা, হলুদ = খেয়াল রাখুন, সবুজ = আজকের সংকেত কম। সংখ্যা = গত ২৪ ঘণ্টায় সন্দেহজনক + নিশ্চিত।</p>
             <div class="bd-map-legend">
                 <span><i class="high"></i> বেশি সতর্কতা</span>
                 <span><i class="watch"></i> খেয়াল রাখুন</span>
@@ -562,7 +551,7 @@ def render_warning_map(map_data: pd.DataFrame, latest_date: pd.Timestamp) -> str
         </div>
         <div class="bd-map-wrap" aria-label="বাংলাদেশের বিভাগভিত্তিক সতর্কতা মানচিত্র {bn_date(latest_date.date())}">
             <svg class="bd-map-svg" viewBox="{division_map['viewBox']}" role="img">
-                <rect x="0" y="0" width="{division_map['width']}" height="{division_map['height']}" rx="28" fill="#f7fbf7"></rect>
+                <rect x="0" y="0" width="{division_map['width']}" height="{division_map['height']}" rx="28" fill="#0a0a0a"></rect>
                 <g>{''.join(regions)}</g>
                 <g>{''.join(labels)}</g>
             </svg>
@@ -703,7 +692,7 @@ if days_behind >= 2:
 
 st.markdown(
     f"""
-    <div class="update-strip">
+    <div class="glass-strip">
         <span>সর্বশেষ: <b>{bn_date(all_max_date)}</b></span>
         <span>রিপোর্ট: <b>{bn_num(validated_count)}</b></span>
         <span>বিভাগ: <b>{bn_num(len(public_divisions))}</b></span>
@@ -739,7 +728,7 @@ else:
 
 bar_source = map_data.sort_values("new_total_24h", ascending=True)
 if not bar_source.empty:
-    st.subheader(f"{bn_date(map_date.date())} — বিভাগভিত্তিক ২৪ ঘণ্টার চাপ")
+    section_title(f"{bn_date(map_date.date())} — বিভাগভিত্তিক ২৪ ঘণ্টার চাপ", "নির্বাচিত তারিখে কোন বিভাগে চাপ বেশি")
     bar_fig = px.bar(
         bar_source,
         x="new_total_24h",
@@ -763,7 +752,7 @@ if not bar_source.empty:
     apply_mobile_friendly_layout(bar_fig, height=max(320, 42 * len(bar_source)), chart_kind="heatmap")
     st.plotly_chart(bar_fig, use_container_width=True, config=CHART_CONFIG)
 
-st.subheader("এখন কোথায় বেশি বাড়ছে?")
+section_title("এখন কোথায় বেশি বাড়ছে?", "সর্বশেষ রিপোর্টের বিভাগভিত্তিক তালিকা")
 ranking = (
     latest[
         [
@@ -817,7 +806,7 @@ if not previous_window.empty:
         direction = "বেশি" if change >= 0 else "কম"
         return f"{bn_num(round(abs(change)))}% {direction}"
 
-    st.subheader("৭ দিনের তুলনায় কী বোঝা যাচ্ছে")
+    section_title("৭ দিনের তুলনায় কী বোঝা যাচ্ছে", "গড়ের সঙ্গে তুলনা করে দ্রুত পড়ুন")
     with st.expander("বিস্তারিত বিভাগভিত্তিক ব্যাখ্যা দেখুন", expanded=False):
         for _, row in alerts.iterrows():
             cases_today = int(row["new_total_24h"] or 0)
@@ -841,6 +830,7 @@ if not previous_window.empty:
                 f"{death_sentence}."
             )
 
+section_title("সময়ের সাথে প্রবণতা", "চার্ট ও হিটম্যাপ দিয়ে দীর্ঘমেয়াদি প্যাটার্ন দেখুন")
 chart_tab, heatmap_tab = st.tabs(["প্রবণতা", "হিটম্যাপ"])
 
 with chart_tab:
@@ -918,7 +908,8 @@ with chart_tab:
             y=metric,
             color="division",
             markers=True,
-            color_discrete_map={TREND_LINE_BD: "#d71920"},
+            color_discrete_map={TREND_LINE_BD: NATIONAL_LINE},
+            color_discrete_sequence=CHART_DIVISION_COLORS,
             labels={
                 "report_date": "তারিখ",
                 "division": "বিভাগ",
@@ -994,7 +985,18 @@ with heatmap_tab:
     else:
         heat = heat_data.pivot_table(index="division", columns=heat_data["report_date"].dt.date, values=heat_metric, aggfunc="sum").fillna(0)
         heat.columns = [col.strftime("%d/%m") for col in heat.columns]
-        fig = px.imshow(heat, aspect="auto", color_continuous_scale="YlOrRd", labels={"x": "তারিখ", "y": "বিভাগ", "color": "সংখ্যা"})
+        fig = px.imshow(
+            heat,
+            aspect="auto",
+            color_continuous_scale=[
+                [0.0, "#1d1d1f"],
+                [0.2, "#5e5ce6"],
+                [0.45, "#ff9f0a"],
+                [0.7, "#ff375f"],
+                [1.0, "#ff453a"],
+            ],
+            labels={"x": "তারিখ", "y": "বিভাগ", "color": "সংখ্যা"},
+        )
         apply_mobile_friendly_layout(fig, height=360, chart_kind="heatmap")
         st.plotly_chart(fig, use_container_width=True, config=CHART_CONFIG)
 
