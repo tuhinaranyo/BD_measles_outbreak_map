@@ -113,12 +113,12 @@ def seed_if_empty() -> None:
 
 
 def sync_seed_extracted() -> None:
-    """Refresh DB rows from seed_data.json when local extraction failed.
+    """Keep the local SQLite DB aligned with public seed_data.json.
 
-    Streamlit Cloud admin can leave ``needs_review`` rows in the ephemeral
-    SQLite file (e.g. before an extractor fix was deployed). Seed data is
-    the authoritative public dataset — overwrite any non-extracted row for
-    dates that seed already validated.
+    Streamlit Cloud uses an ephemeral DB that can hold stale or partial rows
+    (e.g. ``needs_review`` stats without a matching extracted report). Seed
+    data is the authoritative public dataset — always upsert every extracted
+    date from the seed file on each app start.
     """
     if not SEED_PATH.exists():
         return
@@ -136,13 +136,6 @@ def sync_seed_extracted() -> None:
     with connect() as conn:
         for report in reports:
             report_date = str(report["report_date"])
-            existing = conn.execute(
-                "SELECT status FROM reports WHERE report_date = ?",
-                (report_date,),
-            ).fetchone()
-            if existing and str(existing["status"]) == "extracted":
-                continue
-
             day_stats = stats_by_date.get(report_date, [])
             if len({row["division"] for row in day_stats}) < len(DIVISIONS):
                 continue

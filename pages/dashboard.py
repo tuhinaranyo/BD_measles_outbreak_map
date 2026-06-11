@@ -353,7 +353,7 @@ def render_warning_map(map_data: pd.DataFrame, latest_date: pd.Timestamp) -> str
     """
 
 
-@st.cache_data(ttl=120)
+@st.cache_data(ttl=60)
 def load_data() -> tuple[pd.DataFrame, pd.DataFrame]:
     init_db()
     with sqlite3.connect(DB_PATH) as conn:
@@ -373,14 +373,30 @@ if stats.empty:
         st.dataframe(reports[["report_date", "title", "status", "validation_message"]], use_container_width=True)
     st.stop()
 
-valid_report_dates = set(reports.loc[reports["status"] == "extracted", "report_date"].astype(str))
+def _iso_dates(series: pd.Series) -> set[str]:
+    return set(
+        pd.to_datetime(series, errors="coerce")
+        .dropna()
+        .dt.strftime("%Y-%m-%d")
+    )
+
+
+valid_report_dates = _iso_dates(reports.loc[reports["status"] == "extracted", "report_date"])
 review_count = int((reports["status"] != "extracted").sum()) if not reports.empty else 0
-all_min_date = stats["report_date"].min().date()
-all_max_date = stats["report_date"].max().date()
-public_divisions = sorted(stats["division"].dropna().unique())
 
 show_review_rows = False
 validated_count = int((reports["status"] == "extracted").sum()) if not reports.empty else 0
+
+if not show_review_rows:
+    stats = stats[stats["report_date"].dt.strftime("%Y-%m-%d").isin(valid_report_dates)].copy()
+
+if stats.empty:
+    st.warning("এখনও যাচাই করা রিপোর্ট পাওয়া যায়নি।")
+    st.stop()
+
+all_min_date = stats["report_date"].min().date()
+all_max_date = stats["report_date"].max().date()
+public_divisions = sorted(stats["division"].dropna().unique())
 
 _now_utc = pd.Timestamp.utcnow()
 if _now_utc.tzinfo is None:
@@ -410,12 +426,6 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
-if not show_review_rows:
-    stats = stats[stats["report_date"].dt.strftime("%Y-%m-%d").isin(valid_report_dates)].copy()
-
-if stats.empty:
-    st.warning("এখনও যাচাই করা রিপোর্ট পাওয়া যায়নি।")
-    st.stop()
 
 default_start_date = max(all_min_date, all_max_date - pd.Timedelta(days=14))
 start_date, end_date = default_start_date, all_max_date
@@ -654,7 +664,12 @@ with chart_tab:
                 metric: trend_options[trend_focus]["label"],
             },
         )
-        fig.update_xaxes(range=[str(start_date), str(end_date)])
+        fig.update_xaxes(
+            range=[
+                filtered["report_date"].min(),
+                filtered["report_date"].max(),
+            ]
+        )
         fig.update_traces(line=dict(width=2.4))
         fig.update_traces(selector=dict(name=TREND_LINE_BD), line=dict(width=5), marker=dict(size=9))
         fig.update_layout(

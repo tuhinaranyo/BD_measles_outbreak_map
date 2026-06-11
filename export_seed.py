@@ -55,8 +55,15 @@ def main() -> None:
             report.get("pdf_path"),
         )
 
+    from datetime import datetime, timezone
+
+    payload = {
+        "exported_at_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "reports": reports,
+        "division_daily_stats": stats,
+    }
     output_path.write_text(
-        json.dumps({"reports": reports, "division_daily_stats": stats}, ensure_ascii=False, indent=2),
+        json.dumps(payload, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
     print(f"Exported {len(reports)} reports and {len(stats)} division rows to {output_path}")
