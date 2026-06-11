@@ -164,11 +164,16 @@ def render_alert_cards_html(map_data: pd.DataFrame) -> str:
             color: #14231d;
         }}
         .alert-grid {{
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
+            display: flex;
             gap: 10px;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 2px;
         }}
         .alert-card {{
+            flex: 0 0 min(88vw, 260px);
+            scroll-snap-align: start;
             border-radius: 14px;
             padding: 12px 14px;
             border: 1px solid #dfe8df;
@@ -222,15 +227,12 @@ def render_alert_cards_html(map_data: pd.DataFrame) -> str:
             color: #65736c;
             font-weight: 700;
         }}
-        @media (max-width: 760px) {{
+        @media (min-width: 900px) {{
             .alert-grid {{
-                grid-template-columns: 1fr;
+                overflow: visible;
             }}
             .alert-card {{
-                padding: 11px 12px;
-            }}
-            .alert-num {{
-                font-size: 1.3rem;
+                flex: 1 1 0;
             }}
         }}
     </style>
@@ -245,9 +247,7 @@ def render_alert_chips(map_data: pd.DataFrame) -> None:
     """Styled alert cards via components.html (same approach as the map)."""
     if map_data.empty:
         return
-    card_count = min(3, len(map_data))
-    frame_height = 58 + card_count * 96
-    components.html(render_alert_cards_html(map_data), height=frame_height, scrolling=False)
+    components.html(render_alert_cards_html(map_data), height=158, scrolling=False)
 
 
 def build_map_data(filtered: pd.DataFrame, target_date: pd.Timestamp) -> pd.DataFrame:
