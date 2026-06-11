@@ -12,7 +12,17 @@ import streamlit.components.v1 as components
 
 from measles_dashboard.config import DB_PATH, ROOT
 from measles_dashboard.db import init_db
-from measles_dashboard.theme import CHART_DIVISION_COLORS, COLORS, FONT_STACK, NATIONAL_LINE, RISK, iframe_shell_css, plotly_base_layout, style_axes
+from measles_dashboard.theme import (
+    CHART_DIVISION_COLORS,
+    COLORS,
+    FONT_STACK,
+    NATIONAL_LINE,
+    RISK,
+    iframe_auto_height_js,
+    iframe_shell_css,
+    plotly_base_layout,
+    style_axes,
+)
 from measles_dashboard.ui import inject_style, section_title
 
 
@@ -98,7 +108,7 @@ def render_public_header(latest_label: str) -> None:
     st.markdown(
         f"""
         <section class="apple-hero">
-            <p class="hero-eyebrow">DGHS দৈনিক রিপোর্ট</p>
+            <p class="hero-eyebrow chip">DGHS দৈনিক রিপোর্ট</p>
             <h1><span class="gradient-text">বাংলাদেশ হাম</span> সতর্কতা</h1>
             <p class="hero-lead">
                 স্বাস্থ্য অধিদপ্তরের দৈনিক প্রেস রিলিজ থেকে বিভাগভিত্তিক সন্দেহজনক,
@@ -229,6 +239,7 @@ def render_alert_cards_html(map_data: pd.DataFrame) -> str:
         <h3>এখন সবচেয়ে বেশি খেয়াল রাখুন</h3>
         <div class="alert-grid">{''.join(cards)}</div>
     </section>
+    {iframe_auto_height_js()}
     """
 
 
@@ -236,7 +247,7 @@ def render_alert_chips(map_data: pd.DataFrame) -> None:
     """Styled alert cards via components.html (same approach as the map)."""
     if map_data.empty:
         return
-    components.html(render_alert_cards_html(map_data), height=172, scrolling=False)
+    components.html(render_alert_cards_html(map_data), height=140, scrolling=False)
 
 
 def build_map_data(filtered: pd.DataFrame, target_date: pd.Timestamp) -> pd.DataFrame:
@@ -368,7 +379,6 @@ def render_warning_map(map_data: pd.DataFrame, latest_date: pd.Timestamp) -> str
             align-items: center;
             margin: 0;
             padding: 20px;
-            overflow: hidden;
         }}
         .bd-map-copy h2 {{
             margin: 8px 0 10px;
@@ -475,6 +485,7 @@ def render_warning_map(map_data: pd.DataFrame, latest_date: pd.Timestamp) -> str
         </div>
         <div class="bd-map-cards chip-row-scroll">{''.join(cards)}</div>
     </section>
+    {iframe_auto_height_js()}
     """
 
 
@@ -639,7 +650,7 @@ st.markdown(
 render_alert_chips(map_data)
 
 if not map_data.empty:
-    components.html(render_warning_map(map_data, map_date), height=560, scrolling=False)
+    components.html(render_warning_map(map_data, map_date), height=720, scrolling=False)
 else:
     st.info("নির্বাচিত তারিখে মানচিত্র দেখানোর মতো ডেটা নেই।")
 

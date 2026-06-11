@@ -46,10 +46,16 @@ RADIUS = {
     "pill": "999px",
 }
 
+CONTROL = {
+    "height": "38px",
+    "pad_y": "8px",
+    "pad_x": "14px",
+    "font_size": "0.82rem",
+}
 
-def iframe_shell_css(*, hide_scroll: bool = True) -> str:
+
+def iframe_shell_css() -> str:
     """Shared layout tokens and chip styles for components.html iframes."""
-    overflow = "hidden" if hide_scroll else "auto"
     return f"""
         :root {{
             --text: {COLORS["text"]};
@@ -66,7 +72,7 @@ def iframe_shell_css(*, hide_scroll: bool = True) -> str:
         html, body {{
             margin: 0;
             padding: 0;
-            overflow: {overflow};
+            overflow: visible;
             font-family: {FONT_STACK};
             color: var(--text);
             background: transparent;
@@ -75,16 +81,17 @@ def iframe_shell_css(*, hide_scroll: bool = True) -> str:
             display: inline-flex;
             align-items: center;
             gap: 7px;
-            min-height: 32px;
-            padding: 6px 14px;
+            min-height: {CONTROL["height"]};
+            padding: {CONTROL["pad_y"]} {CONTROL["pad_x"]};
             border-radius: var(--radius-pill);
             border: 1px solid var(--glass-border);
             background: var(--glass);
             backdrop-filter: blur(16px);
-            font-size: 0.76rem;
+            font-size: {CONTROL["font_size"]};
             font-weight: 600;
             color: var(--muted);
             white-space: nowrap;
+            box-sizing: border-box;
         }}
         .chip b, .chip strong {{
             color: var(--text);
@@ -124,6 +131,131 @@ def iframe_shell_css(*, hide_scroll: bool = True) -> str:
             background: var(--glass);
             backdrop-filter: blur(20px);
             box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+        }}
+    """
+
+
+def iframe_auto_height_js() -> str:
+    """Resize Streamlit html component iframe to fit content (no scrollbar)."""
+    return """
+    <script>
+    (function () {
+      function sendHeight() {
+        const height = Math.ceil(
+          Math.max(
+            document.body.scrollHeight,
+            document.documentElement.scrollHeight,
+            document.body.offsetHeight,
+            document.documentElement.offsetHeight
+          )
+        );
+        window.parent.postMessage({ type: "streamlit:setFrameHeight", height: height }, "*");
+      }
+      sendHeight();
+      window.addEventListener("load", sendHeight);
+      if (window.ResizeObserver) {
+        new ResizeObserver(sendHeight).observe(document.documentElement);
+      } else {
+        window.addEventListener("resize", sendHeight);
+      }
+    })();
+    </script>
+    """
+
+
+def streamlit_controls_css() -> str:
+    """Unified pill styling for Streamlit widgets."""
+    glass = COLORS["glass"]
+    border = COLORS["glass_border"]
+    text = COLORS["text"]
+    muted = COLORS["muted"]
+    link = COLORS["link"]
+    bg = COLORS["bg"]
+    pill = RADIUS["pill"]
+    h = CONTROL["height"]
+    fs = CONTROL["font_size"]
+    py = CONTROL["pad_y"]
+    px = CONTROL["pad_x"]
+    return f"""
+        div[data-testid="stSelectbox"] div[data-baseweb="select"] > div,
+        div[data-testid="stMultiSelect"] div[data-baseweb="select"] > div,
+        div.stButton > button,
+        div[data-testid="stDownloadButton"] > button,
+        a[data-testid="stLinkButton"],
+        .stTabs [data-baseweb="tab"] {{
+            min-height: {h} !important;
+            border-radius: {pill} !important;
+            border: 1px solid {border} !important;
+            background: {glass} !important;
+            backdrop-filter: blur(16px);
+            font-size: {fs} !important;
+            font-weight: 600 !important;
+            box-shadow: none !important;
+            transition: background 0.2s ease, transform 0.2s ease;
+        }}
+
+        div[data-testid="stSelectbox"] div[data-baseweb="select"] > div,
+        div[data-testid="stMultiSelect"] div[data-baseweb="select"] > div {{
+            color: {text} !important;
+            padding-top: {py} !important;
+            padding-bottom: {py} !important;
+        }}
+
+        div[data-testid="stSelectbox"] div[data-baseweb="select"] svg,
+        div[data-testid="stMultiSelect"] div[data-baseweb="select"] svg {{
+            fill: {muted} !important;
+        }}
+
+        div.stButton > button,
+        div[data-testid="stDownloadButton"] > button,
+        a[data-testid="stLinkButton"] {{
+            color: {link} !important;
+            padding: {py} {px} !important;
+        }}
+
+        div.stButton > button:hover,
+        div[data-testid="stDownloadButton"] > button:hover,
+        a[data-testid="stLinkButton"]:hover {{
+            background: rgba(41, 151, 255, 0.15) !important;
+            transform: scale(1.01);
+        }}
+
+        .stTabs [data-baseweb="tab"] {{
+            color: {muted} !important;
+            padding: {py} 18px !important;
+        }}
+
+        .stTabs [aria-selected="true"] {{
+            background: {text} !important;
+            color: {bg} !important;
+            border-color: {text} !important;
+        }}
+
+        [data-testid="stSelectbox"] label,
+        [data-testid="stMultiSelect"] label {{
+            color: {muted} !important;
+            font-weight: 600 !important;
+            font-size: {fs} !important;
+        }}
+
+        span[data-baseweb="tag"] {{
+            border-radius: {pill} !important;
+            border: 1px solid {border} !important;
+            background: {glass} !important;
+            font-size: 0.78rem !important;
+        }}
+
+        div[data-testid="stExpander"] {{
+            border: 1px solid {border};
+            border-radius: {RADIUS["lg"]};
+            background: {glass};
+            backdrop-filter: blur(12px);
+        }}
+
+        div[data-testid="stExpander"] summary {{
+            min-height: {h};
+            padding: {py} {px};
+            font-weight: 600;
         }}
     """
 

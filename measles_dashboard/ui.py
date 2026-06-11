@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import streamlit as st
 
-from .theme import COLORS, FONT_STACK, RADIUS
+from .theme import COLORS, CONTROL, FONT_STACK, RADIUS, streamlit_controls_css
 
 
 def inject_style() -> None:
@@ -96,15 +96,12 @@ def inject_style() -> None:
         .apple-hero .hero-eyebrow {{
             display: inline-block;
             margin: 0 0 1rem;
-            padding: 6px 14px;
-            border-radius: var(--radius-pill);
-            border: 1px solid var(--glass-border);
-            background: var(--glass);
-            color: var(--muted);
-            font-size: 0.78rem;
-            font-weight: 600;
+        }}
+
+        .apple-hero .hero-eyebrow.chip {{
             letter-spacing: 0.06em;
             text-transform: uppercase;
+            font-size: 0.78rem;
         }}
 
         .apple-hero .hero-lead {{
@@ -150,40 +147,20 @@ def inject_style() -> None:
             display: inline-flex;
             align-items: center;
             gap: 7px;
-            min-height: 32px;
-            padding: 6px 14px;
+            min-height: {CONTROL["height"]};
+            padding: {CONTROL["pad_y"]} {CONTROL["pad_x"]};
             border-radius: var(--radius-pill);
             background: var(--glass);
             border: 1px solid var(--glass-border);
             backdrop-filter: blur(16px);
-            font-size: 0.76rem;
+            font-size: {CONTROL["font_size"]};
             font-weight: 600;
             color: var(--muted);
             white-space: nowrap;
+            box-sizing: border-box;
         }}
 
-        .chip b {{
-            color: var(--text);
-            font-weight: 700;
-        }}
-
-        .glass-strip .chip,
-        .glass-strip span {{
-            display: inline-flex;
-            align-items: center;
-            gap: 7px;
-            min-height: 32px;
-            padding: 6px 14px;
-            border-radius: var(--radius-pill);
-            background: var(--glass);
-            border: 1px solid var(--glass-border);
-            backdrop-filter: blur(16px);
-            font-size: 0.76rem;
-            font-weight: 600;
-            color: var(--muted);
-        }}
-
-        .glass-strip b {{
+        .chip b, .chip strong {{
             color: var(--text);
             font-weight: 700;
         }}
@@ -191,7 +168,10 @@ def inject_style() -> None:
         [data-testid="stHtml"] iframe {{
             overflow: hidden !important;
             border: none;
+            display: block;
         }}
+
+        {streamlit_controls_css()}
 
         .metric-grid {{
             display: grid;
@@ -289,66 +269,10 @@ def inject_style() -> None:
             background: var(--glass);
         }}
 
-        div[data-testid="stExpander"] {{
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-lg);
-            background: var(--glass);
-            backdrop-filter: blur(12px);
-        }}
-
         .stTabs [data-baseweb="tab-list"] {{
-            gap: 6px;
+            gap: 8px;
             background: transparent;
             border-bottom: none;
-        }}
-
-        .stTabs [data-baseweb="tab"] {{
-            border-radius: var(--radius-pill);
-            border: 1px solid var(--glass-border);
-            background: var(--glass);
-            color: var(--muted);
-            padding: 8px 18px;
-            font-weight: 600;
-        }}
-
-        .stTabs [aria-selected="true"] {{
-            background: var(--text) !important;
-            color: var(--bg) !important;
-            border-color: var(--text) !important;
-        }}
-
-        div.stButton > button,
-        div[data-testid="stDownloadButton"] > button,
-        a[data-testid="stLinkButton"] {{
-            border-radius: var(--radius-pill) !important;
-            border: 1px solid var(--glass-border) !important;
-            background: var(--glass) !important;
-            color: var(--link) !important;
-            font-weight: 600 !important;
-            backdrop-filter: blur(12px);
-            transition: background 0.2s ease, transform 0.2s ease;
-        }}
-
-        div.stButton > button:hover,
-        div[data-testid="stDownloadButton"] > button:hover,
-        a[data-testid="stLinkButton"]:hover {{
-            background: rgba(41, 151, 255, 0.15) !important;
-            transform: scale(1.01);
-        }}
-
-        [data-testid="stSelectbox"] label,
-        [data-testid="stMultiSelect"] label {{
-            color: var(--muted) !important;
-            font-weight: 600 !important;
-            font-size: 0.82rem !important;
-        }}
-
-        [data-testid="stSelectbox"] div[data-baseweb="select"] > div,
-        [data-testid="stMultiSelect"] div[data-baseweb="select"] > div {{
-            background: var(--glass) !important;
-            border-color: var(--glass-border) !important;
-            border-radius: var(--radius-md) !important;
-            color: var(--text) !important;
         }}
 
         [data-testid="stMarkdownContainer"] a {{
