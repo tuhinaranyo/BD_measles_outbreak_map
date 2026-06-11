@@ -15,7 +15,7 @@ from measles_dashboard.db import init_db
 from measles_dashboard.ui import inject_style
 
 
-st.set_page_config(page_title="বাংলাদেশ হাম সতর্কতা", layout="wide")
+st.set_page_config(page_title="বাংলাদেশ হাম সতর্কতা", layout="wide", initial_sidebar_state="collapsed")
 inject_style()
 
 
@@ -119,25 +119,21 @@ def render_public_header(latest_label: str) -> None:
 
 
 def render_alert_chips(map_data: pd.DataFrame) -> None:
+    """Top alert divisions — native Streamlit cards (HTML classes get stripped on Cloud)."""
     if map_data.empty:
         return
-    chips: list[str] = []
     ranked = map_data.copy()
     ranked["risk_rank"] = ranked["status"].map(lambda value: RISK_STYLE[value]["rank"])
     ranked = ranked.sort_values(["risk_rank", "total_24h"], ascending=[False, False]).head(3)
-    css_class = {"High alert": "high", "Watch closely": "watch", "Lower signal": "lower"}
+    st.markdown("**এখন সবচেয়ে বেশি খেয়াল রাখুন**")
     for _, row in ranked.iterrows():
         status_label = STATUS_BN[str(row["status"])]
-        chips.append(
-            f"""
-            <div class="alert-chip {css_class[str(row['status'])]}">
-                <b>{escape(str(row['division']))} · {escape(status_label)}</b>
-                ২৪ ঘণ্টায় {bn_num(int(row['total_24h']))} রোগী
-                · মৃত্যু {bn_num(int(row['deaths_24h']))}
-            </div>
-            """
-        )
-    st.markdown(f'<div class="alert-chips">{"".join(chips)}</div>', unsafe_allow_html=True)
+        with st.container(border=True):
+            st.markdown(f"**{row['division']}** · {status_label}")
+            st.caption(
+                f"২৪ ঘণ্টায় {bn_num(int(row['total_24h']))} রোগী · "
+                f"মৃত্যু {bn_num(int(row['deaths_24h']))}"
+            )
 
 
 def build_map_data(filtered: pd.DataFrame, target_date: pd.Timestamp) -> pd.DataFrame:
@@ -509,15 +505,15 @@ public_divisions = sorted(stats["division"].dropna().unique())
 
 render_public_header(bn_date(all_max_date))
 
-with st.sidebar:
-    st.subheader("সেটিংস")
+filter_col1, filter_col2 = st.columns(2)
+with filter_col1:
     range_label = st.selectbox("চার্ট ও টেবিলের সময়সীমা", list(RANGE_OPTIONS.keys()), index=1)
-    range_days = RANGE_OPTIONS[range_label]
-    if range_days is None:
-        start_date = all_min_date
-    else:
-        start_date = max(all_min_date, all_max_date - pd.Timedelta(days=range_days))
-    end_date = all_max_date
+range_days = RANGE_OPTIONS[range_label]
+if range_days is None:
+    start_date = all_min_date
+else:
+    start_date = max(all_min_date, all_max_date - pd.Timedelta(days=range_days))
+end_date = all_max_date
 
 divisions = sorted(stats["division"].dropna().unique())
 
@@ -530,13 +526,16 @@ filtered["new_deaths_24h"] = filtered["suspected_deaths_24h"].fillna(0) + filter
 filtered["net_admitted_24h"] = filtered["admitted_24h"].fillna(0) - filtered["discharged_24h"].fillna(0)
 
 available_map_dates = sorted(filtered["report_date"].dt.date.unique())
-with st.sidebar:
+with filter_col2:
     map_date_value = st.selectbox(
         "মানচিত্রের তারিখ",
         options=available_map_dates,
         index=len(available_map_dates) - 1,
         format_func=lambda value: bn_date(value),
     )
+
+btn_col1, btn_col2 = st.columns(2)
+with btn_col1:
     st.download_button(
         "CSV ডাউনলোড",
         data=export_csv(filtered),
@@ -544,18 +543,26 @@ with st.sidebar:
         mime="text/csv",
         use_container_width=True,
     )
-    pdf_url = latest_pdf_url(reports, all_max_date)
+pdf_url = latest_pdf_url(reports, all_max_date)
+with btn_col2:
     if pdf_url:
         st.link_button("সর্বশেষ DGHS PDF", pdf_url, use_container_width=True)
-    with st.expander("কীভাবে পড়বেন"):
-        st.markdown(
-            """
-            - **২৪ ঘণ্টার সংখ্যা** = গত রিপোর্টিং দিনের (সকাল ৮টা–৮টা) নতুন রোগী।
-            - **মোট নিশ্চিত** = outbreak শুরু থেকে জমা নিশ্চিত রোগীর সংখ্যা।
-            - **লাল সতর্কতা** = বেশি রোগী বা কোনো মৃত্যু রিপোর্ট; **হলুদ** = মাঝারি চাপ বা বাড়ছে।
-            - ডেটা DGHS PDF থেকে স্বয়ংক্রিয়ভাবে আসে; যাচাই ব্যর্থ হলে প্রকাশ হয় না।
-            """
+    else:
+        st.link_button(
+            "DGHS প্রেস রিলিজ",
+            "https://dghs.gov.bd/pages/press-releases/",
+            use_container_width=True,
         )
+
+with st.expander("কীভাবে পড়বেন"):
+    st.markdown(
+        """
+        - **২৪ ঘণ্টার সংখ্যা** = গত রিপোর্টিং দিনের (সকাল ৮টা–৮টা) নতুন রোগী।
+        - **মোট নিশ্চিত** = outbreak শুরু থেকে জমা নিশ্চিত রোগীর সংখ্যা।
+        - **লাল সতর্কতা** = বেশি রোগী বা কোনো মৃত্যু রিপোর্ট; **হলুদ** = মাঝারি চাপ বা বাড়ছে।
+        - ডেটা DGHS PDF থেকে স্বয়ংক্রিয়ভাবে আসে; যাচাই ব্যর্থ হলে প্রকাশ হয় না।
+        """
+    )
 
 map_date = pd.Timestamp(map_date_value)
 map_data = build_map_data(filtered, map_date)

@@ -576,33 +576,6 @@ def inject_style() -> None:
 
         .stale-data-banner b { color: var(--red); }
 
-        .alert-chips {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 10px;
-            margin: 0 0 20px;
-        }
-
-        .alert-chip {
-            border-radius: 14px;
-            padding: 12px 14px;
-            border: 1px solid var(--line);
-            background: #fff;
-            box-shadow: 0 10px 24px rgba(0, 67, 50, .06);
-            font-size: .88rem;
-            line-height: 1.45;
-        }
-
-        .alert-chip b { display: block; margin-bottom: 4px; font-size: .95rem; }
-        .alert-chip.high { border-left: 4px solid var(--red); }
-        .alert-chip.watch { border-left: 4px solid var(--gold); }
-        .alert-chip.lower { border-left: 4px solid var(--green); }
-
-        [data-testid="stSidebar"] .stDownloadButton button,
-        [data-testid="stSidebar"] a[data-testid="stLinkButton"] {
-            width: 100%;
-        }
-
         .page-footer {
             margin-top: 2.5rem;
             padding-top: 1rem;
@@ -691,8 +664,12 @@ def inject_style() -> None:
                 flex-wrap: wrap !important;
             }
             [data-testid="column"] {
-                min-width: 100% !important;
+                min-width: min(100%, 280px) !important;
                 flex: 1 1 100% !important;
+            }
+            div.stDownloadButton > button,
+            a[data-testid="stLinkButton"] {
+                width: 100% !important;
             }
             .stTabs [data-baseweb="tab"] {
                 padding: 6px 12px;
