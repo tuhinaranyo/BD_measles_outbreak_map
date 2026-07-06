@@ -1,5 +1,5 @@
 {
-  "exported_at_utc": "2026-07-05T19:32:27+00:00",
+  "exported_at_utc": "2026-07-06T12:09:28+00:00",
   "reports": [
     {
       "report_date": "2026-04-21",
@@ -748,6 +748,17 @@
       "validation_message": "Validated against মোট row.",
       "downloaded_at": "2026-07-05 14:47:09",
       "extracted_at": "2026-07-05 14:48:38"
+    },
+    {
+      "report_date": "2026-07-06",
+      "title": "Local PDF 2026-07-06.pdf",
+      "page_url": "manual-import",
+      "pdf_url": "https://objectstorage.ap-dcc-gazipur-1.oraclecloud15.com/n/axvjbnqprylg/b/V2Ministry/o/office-dghs/2026/6/24f5b51b-7516-4e7a-bb56-62cc9164ffc7.pdf",
+      "pdf_path": "data/raw_pdfs/2026-07-06.pdf",
+      "status": "extracted",
+      "validation_message": "Validated against মোট row.",
+      "downloaded_at": "2026-07-06 12:08:37",
+      "extracted_at": "2026-07-06 12:09:28"
     }
   ],
   "division_daily_stats": [
@@ -9326,6 +9337,118 @@
       "confirmed_deaths_total": 3,
       "admitted_total": 5397,
       "discharged_total": 5081
+    },
+    {
+      "report_date": "2026-07-06",
+      "division": "খুলনা",
+      "suspected_24h": 77,
+      "suspected_deaths_24h": 0,
+      "confirmed_24h": 4,
+      "confirmed_deaths_24h": 0,
+      "admitted_24h": 77,
+      "discharged_24h": 98,
+      "suspected_total": 7450,
+      "suspected_deaths_total": 29,
+      "confirmed_total": 329,
+      "confirmed_deaths_total": 0,
+      "admitted_total": 7012,
+      "discharged_total": 6746
+    },
+    {
+      "report_date": "2026-07-06",
+      "division": "চট্টগ্রাম",
+      "suspected_24h": 193,
+      "suspected_deaths_24h": 0,
+      "confirmed_24h": 76,
+      "confirmed_deaths_24h": 0,
+      "admitted_24h": 192,
+      "discharged_24h": 180,
+      "suspected_total": 18625,
+      "suspected_deaths_total": 53,
+      "confirmed_total": 1389,
+      "confirmed_deaths_total": 10,
+      "admitted_total": 17730,
+      "discharged_total": 17448
+    },
+    {
+      "report_date": "2026-07-06",
+      "division": "ঢাকা",
+      "suspected_24h": 388,
+      "suspected_deaths_24h": 1,
+      "confirmed_24h": 25,
+      "confirmed_deaths_24h": 0,
+      "admitted_24h": 338,
+      "discharged_24h": 347,
+      "suspected_total": 48533,
+      "suspected_deaths_total": 279,
+      "confirmed_total": 8405,
+      "confirmed_deaths_total": 57,
+      "admitted_total": 36411,
+      "discharged_total": 34844
+    },
+    {
+      "report_date": "2026-07-06",
+      "division": "বরিশাল",
+      "suspected_24h": 117,
+      "suspected_deaths_24h": 0,
+      "confirmed_24h": 0,
+      "confirmed_deaths_24h": 0,
+      "admitted_24h": 117,
+      "discharged_24h": 125,
+      "suspected_total": 10817,
+      "suspected_deaths_total": 41,
+      "confirmed_total": 409,
+      "confirmed_deaths_total": 19,
+      "admitted_total": 10123,
+      "discharged_total": 9354
+    },
+    {
+      "report_date": "2026-07-06",
+      "division": "রংপুর",
+      "suspected_24h": 26,
+      "suspected_deaths_24h": 0,
+      "confirmed_24h": 22,
+      "confirmed_deaths_24h": 0,
+      "admitted_24h": 24,
+      "discharged_24h": 14,
+      "suspected_total": 2021,
+      "suspected_deaths_total": 9,
+      "confirmed_total": 183,
+      "confirmed_deaths_total": 0,
+      "admitted_total": 1280,
+      "discharged_total": 1026
+    },
+    {
+      "report_date": "2026-07-06",
+      "division": "রাজশাহী",
+      "suspected_24h": 42,
+      "suspected_deaths_24h": 1,
+      "confirmed_24h": 19,
+      "confirmed_deaths_24h": 0,
+      "admitted_24h": 40,
+      "discharged_24h": 61,
+      "suspected_total": 8213,
+      "suspected_deaths_total": 89,
+      "confirmed_total": 1192,
+      "confirmed_deaths_total": 2,
+      "admitted_total": 7111,
+      "discharged_total": 7157
+    },
+    {
+      "report_date": "2026-07-06",
+      "division": "সিলেট",
+      "suspected_24h": 60,
+      "suspected_deaths_24h": 1,
+      "confirmed_24h": 4,
+      "confirmed_deaths_24h": 0,
+      "admitted_24h": 59,
+      "discharged_24h": 72,
+      "suspected_total": 5953,
+      "suspected_deaths_total": 86,
+      "confirmed_total": 421,
+      "confirmed_deaths_total": 3,
+      "admitted_total": 5456,
+      "discharged_total": 5153
     }
   ]
 }
