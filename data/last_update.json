@@ -1,11 +1,11 @@
 {
-  "ran_at_utc": "2026-11-08T21:34:48+00:00",
+  "ran_at_utc": "2026-11-10T01:05:10+00:00",
   "source": "new-only",
-  "processed_pdfs": 37,
+  "processed_pdfs": 38,
   "errors": [],
   "latest_extracted": "2026-11-07",
   "status_counts": {
     "extracted": 154,
-    "needs_review": 37
+    "needs_review": 38
   }
 }
