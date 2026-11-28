@@ -27,6 +27,12 @@ python -m public_alerts --out ../alerts-data --pages 2
 `<alert>.json`: `fields` names the numbers; each report has `date`, `pdf_url`, `page_url`,
 `total` and `divisions` (arrays in `fields` order). `status` records the last check.
 
+The newest dengue reports also have `districts`: `dhaka_city` and the 64 districts, each as
+`[admitted_24h, admitted_total, deaths_total, discharged_total, in_hospital]`
+(`dhaka` is Dhaka district outside the city). It is published only when every division's
+districts add up to the page-1 table; otherwise the workflow shows a "dengue districts"
+warning, usually a new spelling to add in `sources/dengue_districts.py`.
+
 ## Add an alert
 
 Write `sources/<id>.py` (copy `dengue.py`), add it to `sources/__init__.py`, add a fixture

@@ -11,9 +11,11 @@ import re
 from datetime import date
 
 from ..common import Document, Held, ascii_digits, check_sums, division_table, to_int, trailing_ints
+from . import dengue_districts
 
 ID = "dengue"
-PARSER_VERSION = 2
+PARSER_VERSION = 3
+KEEP_DISTRICTS = 14
 LISTING_URL = (
     "https://dghs.gov.bd/pages/miscellaneous-infos"
     "?filters=%7B%22miscellaneous_info_type%22%3A%226a9cf0471fa8cd87d1f50227%22%7D"
@@ -62,4 +64,9 @@ def parse(doc: Document, listed: str) -> dict:
     notes = []
     if t["admitted_total"] != t["discharged_total"] + t["deaths_total"] + t["in_hospital"]:
         notes.append("totals_do_not_balance")
-    return {"total": total, "divisions": divisions, "notes": notes}
+    result = {"total": total, "divisions": divisions, "notes": notes}
+    try:
+        result["districts"] = dengue_districts.read(doc, divisions, FIELDS)
+    except ValueError as exc:  # the division numbers are still good
+        print(f"::warning title=dengue districts::{listed}: {exc}", flush=True)
+    return result

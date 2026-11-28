@@ -12,7 +12,7 @@ FIXTURES = Path(__file__).parent / "fixtures"
 
 def load(name: str) -> Document:
     raw = json.loads((FIXTURES / f"{name}.json").read_text(encoding="utf-8"))
-    return Document(raw["texts"], raw["tables"])
+    return Document(raw["texts"], raw["tables"], raw.get("rows", []))
 
 
 def edit(doc: Document, page: int, first_cell_contains: str, change) -> Document:
@@ -76,6 +76,26 @@ class Dengue(unittest.TestCase):
         broken = Document(self.doc.texts[:1], self.doc.tables[:1])
         with self.assertRaisesRegex(Held, "countrywide"):
             dengue.parse(broken, "2026-11-25")
+
+
+class DengueDistricts(unittest.TestCase):
+    def setUp(self):
+        self.doc = load("dengue-2026-11-02")
+
+    def test_all_districts_add_up(self):
+        result = dengue.parse(self.doc, "2026-11-02")
+        districts = result["districts"]
+        self.assertEqual(len(districts), 65)
+        self.assertEqual(districts["dhaka_city"], [511, 30126, 177, 28503, 1446])
+        self.assertEqual(sum(d[0] for d in districts.values()), result["total"][0])
+
+    def test_a_wrong_district_number_drops_only_the_districts(self):
+        broken = copy.deepcopy(self.doc)
+        row = next(r for page in broken.rows for t in page for r in t if len(r) == 11 and r[2] and to_int(r[4]) is not None)
+        row[7] = "999999"
+        result = dengue.parse(broken, "2026-11-02")
+        self.assertNotIn("districts", result)
+        self.assertEqual(result["total"][0], 1970)
 
 
 class Helpers(unittest.TestCase):

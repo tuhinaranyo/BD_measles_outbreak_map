@@ -153,6 +153,11 @@ def update(session, source, out: Path, pages: int) -> bool:
 
     data["reports"] = [reports[k] for k in sorted(reports)]
     mark_revisions(data["reports"], source.FIELDS)
+    # District detail is large, so only the newest reports keep it.
+    keep = getattr(source, "KEEP_DISTRICTS", 0)
+    if keep:
+        for report in data["reports"][:-keep]:
+            report.pop("districts", None)
     data["held"] = [held[k] for k in sorted(held)]
     newest = listed[0].date if listed else None
     status.update(

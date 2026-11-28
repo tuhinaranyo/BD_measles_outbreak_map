@@ -9,7 +9,7 @@ import io
 import re
 import time
 import unicodedata
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 from html import unescape
 from urllib.parse import quote, urljoin, urlsplit, urlunsplit
@@ -47,6 +47,7 @@ class Listed:
 class Document:
     texts: list[str]  # one string per page
     tables: list[list[list[list[str]]]]  # page -> table -> row -> non-empty cells
+    rows: list[list[list[list[str]]]] = field(default_factory=list)  # the same, empty cells kept
 
 
 def nfd(value: str) -> str:
@@ -176,16 +177,16 @@ def read_pdf(data: bytes) -> Document:
         raise Held("downloaded file is not a PDF")
     texts: list[str] = []
     tables: list[list[list[list[str]]]] = []
+    rows: list[list[list[list[str]]]] = []
     with pdfplumber.open(io.BytesIO(data)) as pdf:
         for page in pdf.pages[:12]:
             texts.append(page.extract_text(x_tolerance=1, y_tolerance=3) or "")
-            tables.append([
-                [[c.strip() for c in row if c and c.strip()] for row in table]
-                for table in page.extract_tables() or []
-            ])
+            raw = [[[(c or "").strip() for c in row] for row in table] for table in page.extract_tables() or []]
+            rows.append(raw)
+            tables.append([[[c for c in row if c] for row in table] for table in raw])
     if not texts:
         raise Held("PDF has no pages")
-    return Document(texts, tables)
+    return Document(texts, tables, rows)
 
 
 def division_table(doc: Document, width: int, pages: tuple[int, ...]) -> tuple[dict[str, list[int]], list[int]]:
