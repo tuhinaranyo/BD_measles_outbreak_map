@@ -10,9 +10,10 @@ on:
         description: "List pages to scan (10 reports each)"
         default: "2"
   schedule:
-    # Bangladesh is UTC+6. Hourly from 14:37 to 00:37, then 04:37, 06:37 and 10:37.
-    - cron: "37 8-18 * * *"
-    - cron: "37 0,4,22 * * *"
+    # GitHub starts scheduled jobs late and skips many of them, so ask often.
+    # Every 30 minutes from 12:00 to 02:00 Bangladesh time (UTC+6), then every 2 hours.
+    - cron: "13,43 6-19 * * *"
+    - cron: "13 20,22,0,2,4 * * *"
 
 concurrency:
   group: public-alerts
