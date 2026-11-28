@@ -1,3 +1,18 @@
+# DGHS Measles Dashboard (closed)
+
+> **The dashboard has moved:** <https://www.tuhinhasan.com/measles-alert/>
+> (dengue: <https://www.tuhinhasan.com/dengue-alert/>).
+>
+> **Keep this repository public and do not archive or delete it.** The new pages get their data
+> from here: the code in [`public_alerts/`](public_alerts/README.md), the workflow
+> "Update public alert data", and the `alerts-data` branch.
+>
+> The Streamlit app now only shows a "moved" notice, and the workflow "Update DGHS measles data"
+> is turned off. `data/seed_data.json` is no longer updated and has known errors (a division is
+> missing on many dates), so do not use it. The rest of this file describes the old dashboard.
+
+---
+
 # DGHS Measles Dashboard
 
 A Streamlit dashboard for collecting DGHS Bangla measles press-release PDFs, extracting division-level measles data, validating the extraction, and showing public-friendly trends.
