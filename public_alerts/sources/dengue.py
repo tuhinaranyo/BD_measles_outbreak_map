@@ -14,7 +14,7 @@ from ..common import Document, Held, ascii_digits, check_sums, division_table, t
 from . import dengue_districts
 
 ID = "dengue"
-PARSER_VERSION = 3
+PARSER_VERSION = 4
 KEEP_DISTRICTS = 14
 LISTING_URL = (
     "https://dghs.gov.bd/pages/miscellaneous-infos"

@@ -49,6 +49,14 @@ DISTRICTS = {
         ("sylhet", "রসমলট"), ("sunamganj", "সুনাগঞ্জ"), ("habiganj", "হরেগঞ্জ"), ("moulvibazar", "বৌলভীোজাি"),
     ),
 }
+# Some reports use a second font, where mainly the u vowel comes out as another letter.
+OTHER_SPELLINGS = {
+    "faridpur": "ফরিদপযি", "gazipur": "গাজীপযি", "madaripur": "াদািীপযি", "munshiganj": "যরিরগঞ্জ",
+    "shariatpur": "িীয়তপযি", "jamalpur": "জা ালপযি", "sherpur": "ব িপযি", "chandpur": "চাাঁদপযি",
+    "lakshmipur": "লক্ষীপযি", "khulna": "খযলনা", "chuadanga": "চযয়ািাঙ্গা", "meherpur": "ব মহিপযি",
+    "naogaon": "নওগাাঁ", "joypurhat": "জয়পযিহাট", "rangpur": "িিংপযি", "dinajpur": "রদনাজপযি",
+    "thakurgaon": "ঠাকুিগাাঁও", "patuakhali": "পটযয়াখালী", "pirojpur": "রপমিাজপযি", "sunamganj": "সযনা গঞ্জ",
+}
 CITY = "dhaka_city"
 # Columns of each published row, and where each one sits in the division fields.
 COLUMNS = ("admitted_24h", "admitted_total", "deaths_total", "discharged_total", "in_hospital")
@@ -59,6 +67,7 @@ def key(name: str) -> str:
 
 
 _IDS = {key(spelling): ident for rows in DISTRICTS.values() for ident, spelling in rows}
+_IDS.update({key(spelling): ident for ident, spelling in OTHER_SPELLINGS.items()})
 
 
 def read(doc: Document, divisions: dict[str, list[int]], fields: tuple[str, ...]) -> dict[str, list[int]]:
